@@ -378,7 +378,7 @@
         <div>
           <div class="flex items-center gap-2 flex-wrap">
             <span class="bg-gradient-to-r from-amber-400 to-orange-500 text-slate-950 font-game text-xs font-bold px-2.5 py-0.5 rounded-full">⚔️ VOXEL 3D EXAM RPG</span>
-            <span id="db-source-badge" class="bg-sky-500/20 text-sky-300 border border-sky-500/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full">📦 Mock Data 4 Mapel</span>
+            <span id="db-source-badge" class="bg-sky-500/20 text-sky-300 border border-sky-500/40 text-[11px] font-bold px-2.5 py-0.5 rounded-full">⏳ Menghubungkan Google Sheets...</span>
             <span class="bg-emerald-500/15 text-emerald-300 border border-emerald-500/35 text-[11px] font-bold px-2.5 py-0.5 rounded-full">🔀 Soal & Opsi Acak</span>
           </div>
           <h1 class="font-game text-2xl sm:text-4xl text-white mt-1.5 leading-tight">
@@ -403,10 +403,12 @@
           <div>
             <div class="flex items-center justify-between mb-2">
               <label class="text-xs font-bold text-amber-300 uppercase tracking-wider">1. Pilih Mata Pelajaran</label>
-              <span id="subject-summary-hint" class="text-[11px] text-slate-400">Pilih mapel untuk melihat soal & peringkat</span>
+              <span id="subject-summary-hint" class="text-[11px] text-slate-400">Menarik data dari Google Sheets...</span>
             </div>
             <div id="subject-cards-grid" class="grid grid-cols-2 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto custom-scroll pr-1">
-              <!-- Diisi otomatis oleh JavaScript -->
+              <div class="col-span-2 bg-slate-950/80 border border-slate-800 rounded-2xl p-4 text-center text-xs text-sky-300">
+                ⏳ Mengambil daftar mata pelajaran & soal dari Google Sheets...
+              </div>
             </div>
           </div>
 
@@ -443,8 +445,8 @@
           </div>
 
           <!-- Tombol Mulai -->
-          <button id="btn-start" class="btn-voxel w-full bg-gradient-to-b from-lime-400 to-emerald-600 text-slate-950 font-game text-lg sm:text-xl font-bold py-3.5 rounded-2xl cursor-pointer shadow-lg">
-            🚀 MULAI PERTEMPURAN UJIAN!
+          <button id="btn-start" disabled class="btn-voxel w-full bg-gradient-to-b from-lime-400 to-emerald-600 text-slate-950 font-game text-lg sm:text-xl font-bold py-3.5 rounded-2xl cursor-pointer shadow-lg">
+            ⏳ MEMUAT DATA GOOGLE SHEETS...
           </button>
 
           <div class="text-[11px] text-slate-400 text-center leading-relaxed">
@@ -623,7 +625,7 @@
         <div class="bg-slate-950/75 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
           <label class="block font-bold text-amber-300">1. URL Web App Google Apps Script (GAS)</label>
           <div class="flex flex-col sm:flex-row gap-2">
-            <input id="input-gas-url" type="url" placeholder="https://script.google.com/macros/s/AKfycbyYKYrvNPHOErwfNLUCCx6OcwXXnNiztPyiPTg5VXvH3gt7i8jYAUcaUUvS6Q-jOiM/exec"
+            <input id="input-gas-url" type="url" placeholder="https://script.google.com/macros/s/.../exec"
               class="flex-1 bg-slate-900 border border-slate-700 focus:border-sky-400 rounded-xl px-3 py-2 text-xs text-white outline-none" />
             <button id="btn-sync-gas" class="btn-voxel bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold px-4 py-2 rounded-xl cursor-pointer whitespace-nowrap">
               🔄 Tarik Soal & Leaderboard
@@ -639,23 +641,10 @@
           </div>
         </div>
 
-        <!-- Pilihan Mock Data untuk Uji Coba -->
-        <div class="bg-slate-950/75 border border-slate-800 rounded-2xl p-3.5 space-y-2">
-          <div class="font-bold text-emerald-300">2. Uji Coba Cepat dengan Contoh Database (Mock Data)</div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <button id="btn-load-mock-4mapel" class="btn-voxel bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-bold py-2 px-3 rounded-xl text-xs cursor-pointer">
-              📚 Mock 4 Mapel (BINDO, MTK, IPA, BING)
-            </button>
-            <button id="btn-load-mock-variatif" class="btn-voxel bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-bold py-2 px-3 rounded-xl text-xs cursor-pointer">
-              🌊 Mock 3 Wave Variatif (2+3+5 Soal)
-            </button>
-          </div>
-        </div>
-
         <!-- Struktur Kolom & Kode GAS -->
         <div class="bg-slate-950/75 border border-slate-800 rounded-2xl p-3.5 space-y-2">
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="font-bold text-sky-300">3. Kode Google Apps Script (`Code.gs`) — Header Otomatis</div>
+            <div class="font-bold text-sky-300">2. Kode Google Apps Script (`Code.gs`) — Header Otomatis</div>
             <button id="btn-copy-gas" class="btn-voxel bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold px-3 py-1.5 rounded-xl text-xs cursor-pointer">
               📋 Salin Kode GAS
             </button>
@@ -675,16 +664,12 @@
     'use strict';
 
     // =========================================================================
-    // 0. KONFIGURASI URL GOOGLE APPS SCRIPT PERMANEN (ISI SEKALI DI SINI!)
+    // 0. KONFIGURASI URL GOOGLE APPS SCRIPT PERMANEN (100% GOOGLE SHEETS)
     // =========================================================================
-    // Tempel URL Web App Google Apps Script Anda di antara tanda kutip di bawah,
-    // lalu simpan/Commit ke GitHub (index.html). Semua siswa akan langsung sinkron
-    // otomatis tanpa perlu menempel link lagi!
-    // Contoh: const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycb.../exec';
-    const DEFAULT_GAS_URL = '';
+    const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbyYKYrvNPHOErwfNLUCCx6OcwXXnNiztPyiPTg5VXvH3gt7i8jYAUcaUUvS6Q-jOiM/exec';
 
     // =========================================================================
-    // 1. KONFIGURASI SENJATA (7 TIER ELEMEN) & MOCK DATABASE MULTI-MAPEL
+    // 1. KONFIGURASI SENJATA (7 TIER ELEMEN) & METADATA MAPEL
     // =========================================================================
     const WEAPON_TIERS = [
       {
@@ -739,189 +724,6 @@
       IPS:   { name: 'Ilmu Pengetahuan Sosial', icon: '🗺️', accent: 'from-rose-500 to-pink-600' },
       PPKN:  { name: 'Pendidikan Pancasila', icon: '🦅', accent: 'from-red-500 to-rose-700' },
       UMUM:  { name: 'Ujian Umum', icon: '📚', accent: 'from-slate-500 to-slate-700' }
-    };
-
-    // Mock Database 1: 4 Mata Pelajaran (BINDO 15 soal / 3 Wave, MTK 10 soal / 2 Wave, IPA 10 soal / 2 Wave, BING 10 soal / 2 Wave)
-    const MOCK_DATABASE_4MAPEL = {
-      name: 'Mock Data 4 Mapel',
-      questions: [
-        // --- BINDO WAVE 1 ---
-        {
-          no: 1, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 1, kategori: 'Ide Pokok',
-          wacana: 'Hutan mangrove memiliki peran vital bagi wilayah pesisir. Akar pohon mangrove yang rapat mampu menahan hantaman ombak sehingga mencegah abrasi pantai. Selain itu, ekosistem ini menjadi tempat berkembang biak berbagai jenis ikan dan kepiting.',
-          pertanyaan: 'Ide pokok paragraf tersebut adalah...',
-          opsi: { A: 'Peran penting hutan mangrove bagi wilayah pesisir', B: 'Cara menanam pohon mangrove di pantai', C: 'Jenis ikan dan kepiting di laut dalam', D: 'Penyebab utama terjadinya ombak besar' },
-          kunci: 'A'
-        },
-        {
-          no: 2, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 1, kategori: 'Kata Baku',
-          wacana: '',
-          pertanyaan: 'Manakah penulisan kata baku yang tepat sesuai KBBI?',
-          opsi: { A: 'Apotik dan antri', B: 'Apotek dan antre', C: 'Apotek dan antri', D: 'Apotik dan antre' },
-          kunci: 'B'
-        },
-        {
-          no: 3, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 1, kategori: 'Sinonim',
-          wacana: '',
-          pertanyaan: 'Sinonim kata "inovatif" dalam kalimat "Siswa itu membuat karya yang inovatif" adalah...',
-          opsi: { A: 'Kuno', B: 'Pembaruan', C: 'Sederhana', D: 'Meniru' },
-          kunci: 'B'
-        },
-        {
-          no: 4, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 1, kategori: 'Kalimat Efektif',
-          wacana: '',
-          pertanyaan: 'Manakah kalimat efektif yang paling tepat?',
-          opsi: { A: 'Para hadirin sekalian dimohon berdiri.', B: 'Siswa-siswi kelas VII mengikuti upacara dengan tertib.', C: 'Agar supaya lulus, kita harus rajin belajar.', D: 'Dia naik ke atas panggung untuk berpidato.' },
-          kunci: 'B'
-        },
-        {
-          no: 5, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 1, kategori: 'Tanda Baca',
-          wacana: '',
-          pertanyaan: 'Penggunaan tanda koma yang benar terdapat pada kalimat...',
-          opsi: { A: 'Ibu membeli bayam, wortel, dan kentang di pasar.', B: 'Ibu membeli, bayam wortel dan kentang di pasar.', C: 'Ibu, membeli bayam wortel, dan kentang di pasar.', D: 'Ibu membeli bayam wortel dan, kentang di pasar.' },
-          kunci: 'A'
-        },
-        // --- BINDO WAVE 2 ---
-        {
-          no: 6, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 2, kategori: 'Amanat Cerita',
-          wacana: 'Meskipun berkali-kali gagal membuat roket airnya terbang lurus, Dimas tidak pernah menyerah. Ia terus mencatat kesalahan sudut sayapnya hingga akhirnya roket buatannya meraih juara pertama di lomba sains sekolah.',
-          pertanyaan: 'Amanat yang dapat dipetik dari kutipan cerita di atas adalah...',
-          opsi: { A: 'Kegagalan berarti kita harus berhenti mencoba', B: 'Kemenangan hanya ditentukan oleh keberuntungan', C: 'Ketekunan dan mau belajar dari kesalahan membawa keberhasilan', D: 'Lomba sains hanya untuk siswa yang pintar sejak lahir' },
-          kunci: 'C'
-        },
-        {
-          no: 7, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 2, kategori: 'Majas',
-          wacana: '',
-          pertanyaan: 'Kalimat "Angin malam berbisik lembut membelai dedaunan" menggunakan majas...',
-          opsi: { A: 'Hiperbola', B: 'Personifikasi', C: 'Metafora', D: 'Simile' },
-          kunci: 'B'
-        },
-        {
-          no: 8, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 2, kategori: 'Antonim',
-          wacana: '',
-          pertanyaan: 'Antonim dari kata "optimis" adalah...',
-          opsi: { A: 'Pesimis', B: 'Antusias', C: 'Percaya diri', D: 'Dinamis' },
-          kunci: 'A'
-        },
-        {
-          no: 9, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 2, kategori: 'Imbuhan',
-          wacana: '',
-          pertanyaan: 'Penulisan kata depan "di" yang benar terdapat pada kalimat...',
-          opsi: { A: 'Buku itu diletakkan di atas meja perpustakaan.', B: 'Buku itu di letakkan diatas meja perpustakaan.', C: 'Buku itu diletakkan diatas meja perpustakaan.', D: 'Buku itu di letakkan di atas meja perpustakaan.' },
-          kunci: 'A'
-        },
-        {
-          no: 10, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 2, kategori: 'Teks Prosedur',
-          wacana: '',
-          pertanyaan: 'Ciri kebahasaan utama pada teks prosedur adalah penggunaan kalimat...',
-          opsi: { A: 'Perintah (imperatif)', B: 'Tanya retoris', C: 'Sindiran halus', D: 'Kiasan puitis' },
-          kunci: 'A'
-        },
-        // --- BINDO WAVE 3 ---
-        {
-          no: 11, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 3, kategori: 'Pantun',
-          wacana: 'Jalan-jalan ke Kota Batu,\nJangan lupa membeli apel.\nKalau ingin menambah ilmu,\nRajinlah membaca tiap hari.',
-          pertanyaan: 'Baris ketiga dan keempat pada pantun disebut...',
-          opsi: { A: 'Sampiran', B: 'Isi', C: 'Bait', D: 'Rima' },
-          kunci: 'B'
-        },
-        {
-          no: 12, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 3, kategori: 'Fakta & Opini',
-          wacana: '',
-          pertanyaan: 'Manakah pernyataan yang termasuk kalimat fakta?',
-          opsi: { A: 'Pelajaran olahraga adalah pelajaran paling seru.', B: 'Indonesia merdeka pada tanggal 17 Agustus 1945.', C: 'Menurut saya, warna biru lebih indah daripada hijau.', D: 'Makanan pedas pasti disukai semua orang.' },
-          kunci: 'B'
-        },
-        {
-          no: 13, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 3, kategori: 'Unsur Intrinsik',
-          wacana: '',
-          pertanyaan: 'Tempat, waktu, dan suasana terjadinya peristiwa dalam cerita disebut...',
-          opsi: { A: 'Alur', B: 'Tokoh', C: 'Latar', D: 'Sudut pandang' },
-          kunci: 'C'
-        },
-        {
-          no: 14, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 3, kategori: 'Kata Penghubung',
-          wacana: '',
-          pertanyaan: '"Hujan turun sangat deras, ... pertandingan sepak bola ditunda." Konjungsi yang tepat adalah...',
-          opsi: { A: 'tetapi', B: 'sehingga', C: 'melainkan', D: 'atau' },
-          kunci: 'B'
-        },
-        {
-          no: 15, kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', wave: 3, kategori: 'Teks Berita',
-          wacana: '',
-          pertanyaan: 'Unsur pokok dalam berita yang biasa disingkat ADIKSIMBA mencakup...',
-          opsi: { A: 'Apa, Di mana, Kapan, Siapa, Mengapa, Bagaimana', B: 'Awal, Deskripsi, Isi, Kesimpulan, Saran, Bahasa', C: 'Alur, Dialog, Inti, Klimaks, Setting, Amanat', D: 'Aksi, Drama, Ide, Karakter, Suasana, Akhir' },
-          kunci: 'A'
-        },
-
-        // --- MTK WAVE 1 ---
-        { no: 16, kodeMapel: 'MTK', namaMapel: 'Matematika', wave: 1, kategori: 'Bilangan Bulat', wacana: '', pertanyaan: 'Hasil dari (-12) + 25 - (-7) adalah...', opsi: { A: '6', B: '20', C: '13', D: '30' }, kunci: 'B' },
-        { no: 17, kodeMapel: 'MTK', namaMapel: 'Matematika', wave: 1, kategori: 'Pecahan', wacana: '', pertanyaan: 'Bentuk desimal dari pecahan 3/4 adalah...', opsi: { A: '0,25', B: '0,50', C: '0,75', D: '0,80' }, kunci: 'C' },
-        { no: 18, kodeMapel: 'MTK', namaMapel: 'Matematika', wave: 1, kategori: 'FPB & KPK', wacana: '', pertanyaan: 'KPK dari bilangan 12 dan 18 adalah...', opsi: { A: '6', B: '24', C: '36', D: '72' }, kunci: 'C' },
-        { no: 19, kodeMapel: 'MTK', namaMapel: 'Matematika', wave: 1, kategori: 'Aljabar', wacana: '', pertanyaan: 'Jika 3x + 5 = 20, maka nilai x adalah...', opsi: { A: '3', B: '5', C: '7', D: '15' }, kunci: 'B' },
-        { no: 20, kodeMapel: 'MTK', namaMapel: 'Matematika', wave: 1, kategori: 'Persen', wacana: '', pertanyaan: 'Harga sebuah tas Rp200.000 dengan diskon 25%. Harga yang harus dibayar adalah...', opsi: { A: 'Rp125.000', B: 'Rp150.000', C: 'Rp175.000', D: 'Rp160.000' }, kunci: 'B' },
-        // --- MTK WAVE 2 ---
-        { no: 21, kodeMapel: 'MTK', namaMapel: 'Matematika', wave: 2, kategori: 'Bangun Datar', wacana: '', pertanyaan: 'Luas segitiga dengan alas 14 cm dan tinggi 10 cm adalah...', opsi: { A: '140 cm²', B: '70 cm²', C: '48 cm²', D: '24 cm²' }, kunci: 'B' },
-        { no: 22, kodeMapel: 'MTK', namaMapel: 'Matematika', wave: 2, kategori: 'Sudut', wacana: '', pertanyaan: 'Jumlah besar sudut dalam sebuah segitiga adalah...', opsi: { A: '90°', B: '180°', C: '270°', D: '360°' }, kunci: 'B' },
-        { no: 23, kodeMapel: 'MTK', namaMapel: 'Matematika', wave: 2, kategori: 'Bangun Ruang', wacana: '', pertanyaan: 'Volume kubus yang memiliki panjang rusuk 5 cm adalah...', opsi: { A: '25 cm³', B: '75 cm³', C: '125 cm³', D: '150 cm³' }, kunci: 'C' },
-        { no: 24, kodeMapel: 'MTK', namaMapel: 'Matematika', wave: 2, kategori: 'Perbandingan', wacana: '', pertanyaan: 'Perbandingan kelereng Ali dan Budi adalah 2 : 5. Jika kelereng Ali 12 butir, kelereng Budi adalah...', opsi: { A: '20 butir', B: '24 butir', C: '30 butir', D: '35 butir' }, kunci: 'C' },
-        { no: 25, kodeMapel: 'MTK', namaMapel: 'Matematika', wave: 2, kategori: 'Statistika', wacana: '', pertanyaan: 'Nilai rata-rata (mean) dari data 6, 8, 7, 9, 10 adalah...', opsi: { A: '7,5', B: '8', C: '8,5', D: '9' }, kunci: 'B' },
-
-        // --- IPA WAVE 1 ---
-        { no: 26, kodeMapel: 'IPA', namaMapel: 'Ilmu Pengetahuan Alam', wave: 1, kategori: 'Fotosintesis', wacana: '', pertanyaan: 'Gas yang dihasilkan tumbuhan saat proses fotosintesis adalah...', opsi: { A: 'Karbon dioksida', B: 'Oksigen', C: 'Nitrogen', D: 'Metana' }, kunci: 'B' },
-        { no: 27, kodeMapel: 'IPA', namaMapel: 'Ilmu Pengetahuan Alam', wave: 1, kategori: 'Wujud Zat', wacana: '', pertanyaan: 'Perubahan wujud benda dari gas menjadi cair disebut...', opsi: { A: 'Menguap', B: 'Mengembun', C: 'Menyublim', D: 'Membeku' }, kunci: 'B' },
-        { no: 28, kodeMapel: 'IPA', namaMapel: 'Ilmu Pengetahuan Alam', wave: 1, kategori: 'Sistem Pernapasan', wacana: '', pertanyaan: 'Pertukaran oksigen dan karbon dioksida di dalam paru-paru terjadi pada...', opsi: { A: 'Trakea', B: 'Bronkus', C: 'Alveolus', D: 'Faring' }, kunci: 'C' },
-        { no: 29, kodeMapel: 'IPA', namaMapel: 'Ilmu Pengetahuan Alam', wave: 1, kategori: 'Tata Surya', wacana: '', pertanyaan: 'Planet terbesar dalam tata surya kita adalah...', opsi: { A: 'Saturnus', B: 'Jupiter', C: 'Mars', D: 'Neptunus' }, kunci: 'B' },
-        { no: 30, kodeMapel: 'IPA', namaMapel: 'Ilmu Pengetahuan Alam', wave: 1, kategori: 'Energi', wacana: '', pertanyaan: 'Panel surya mengubah energi cahaya matahari menjadi energi...', opsi: { A: 'Bunyi', B: 'Listrik', C: 'Gerak', D: 'Kimia' }, kunci: 'B' },
-        // --- IPA WAVE 2 ---
-        { no: 31, kodeMapel: 'IPA', namaMapel: 'Ilmu Pengetahuan Alam', wave: 2, kategori: 'Gaya & Gerak', wacana: '', pertanyaan: 'Satuan SI untuk gaya adalah...', opsi: { A: 'Joule', B: 'Watt', C: 'Newton', D: 'Pascal' }, kunci: 'C' },
-        { no: 32, kodeMapel: 'IPA', namaMapel: 'Ilmu Pengetahuan Alam', wave: 2, kategori: 'Ekosistem', wacana: '', pertanyaan: 'Hubungan antara lebah dan bunga yang saling menguntungkan disebut simbiosis...', opsi: { A: 'Parasitisme', B: 'Komensalisme', C: 'Mutualisme', D: 'Amensalisme' }, kunci: 'C' },
-        { no: 33, kodeMapel: 'IPA', namaMapel: 'Ilmu Pengetahuan Alam', wave: 2, kategori: 'Kalor', wacana: '', pertanyaan: 'Perpindahan panas melalui zat perantara tanpa diikuti perpindahan partikelnya disebut...', opsi: { A: 'Konduksi', B: 'Konveksi', C: 'Radiasi', D: 'Evaporasi' }, kunci: 'A' },
-        { no: 34, kodeMapel: 'IPA', namaMapel: 'Ilmu Pengetahuan Alam', wave: 2, kategori: 'Listrik', wacana: '', pertanyaan: 'Benda yang dapat menghantarkan arus listrik dengan baik disebut...', opsi: { A: 'Isolator', B: 'Konduktor', C: 'Resistor', D: 'Transistor' }, kunci: 'B' },
-        { no: 35, kodeMapel: 'IPA', namaMapel: 'Ilmu Pengetahuan Alam', wave: 2, kategori: 'Sel', wacana: '', pertanyaan: 'Bagian sel tumbuhan yang berfungsi sebagai tempat fotosintesis adalah...', opsi: { A: 'Mitokondria', B: 'Kloroplas', C: 'Ribosom', D: 'Vakuola' }, kunci: 'B' },
-
-        // --- BING WAVE 1 ---
-        { no: 36, kodeMapel: 'BING', namaMapel: 'Bahasa Inggris', wave: 1, kategori: 'Simple Present', wacana: '', pertanyaan: 'She ___ to school by bicycle every morning.', opsi: { A: 'go', B: 'goes', C: 'going', D: 'went' }, kunci: 'B' },
-        { no: 37, kodeMapel: 'BING', namaMapel: 'Bahasa Inggris', wave: 1, kategori: 'Vocabulary', wacana: '', pertanyaan: 'The opposite of the word "brave" is...', opsi: { A: 'Strong', B: 'Cowardly', C: 'Smart', D: 'Kind' }, kunci: 'B' },
-        { no: 38, kodeMapel: 'BING', namaMapel: 'Bahasa Inggris', wave: 1, kategori: 'Greeting', wacana: '', pertanyaan: 'A: "Thank you very much for your help!" — B: "..."', opsi: { A: 'You are welcome', B: 'Good night', C: 'See you later', D: 'I am sorry' }, kunci: 'A' },
-        { no: 39, kodeMapel: 'BING', namaMapel: 'Bahasa Inggris', wave: 1, kategori: 'Pronoun', wacana: '', pertanyaan: 'Dina and I are classmates. ___ always study together.', opsi: { A: 'They', B: 'She', C: 'We', D: 'He' }, kunci: 'C' },
-        { no: 40, kodeMapel: 'BING', namaMapel: 'Bahasa Inggris', wave: 1, kategori: 'Preposition', wacana: '', pertanyaan: 'The cat is sleeping ___ the sofa.', opsi: { A: 'on', B: 'at', C: 'to', D: 'of' }, kunci: 'A' },
-        // --- BING WAVE 2 ---
-        { no: 41, kodeMapel: 'BING', namaMapel: 'Bahasa Inggris', wave: 2, kategori: 'Past Tense', wacana: '', pertanyaan: 'We ___ Borobudur Temple last holiday.', opsi: { A: 'visit', B: 'visits', C: 'visited', D: 'visiting' }, kunci: 'C' },
-        { no: 42, kodeMapel: 'BING', namaMapel: 'Bahasa Inggris', wave: 2, kategori: 'Comparison', wacana: '', pertanyaan: 'Mount Everest is the ___ mountain in the world.', opsi: { A: 'high', B: 'higher', C: 'highest', D: 'most high' }, kunci: 'C' },
-        { no: 43, kodeMapel: 'BING', namaMapel: 'Bahasa Inggris', wave: 2, kategori: 'Reading', wacana: 'Budi loves gardening. Every Sunday morning, he waters his tomato and chili plants in the backyard.', pertanyaan: 'When does Budi water his plants?', opsi: { A: 'Every Monday evening', B: 'Every Sunday morning', C: 'Every Saturday night', D: 'Every Friday afternoon' }, kunci: 'B' },
-        { no: 44, kodeMapel: 'BING', namaMapel: 'Bahasa Inggris', wave: 2, kategori: 'Modal', wacana: '', pertanyaan: 'Students ___ keep the classroom clean.', opsi: { A: 'must', B: 'is', C: 'were', D: 'does' }, kunci: 'A' },
-        { no: 45, kodeMapel: 'BING', namaMapel: 'Bahasa Inggris', wave: 2, kategori: 'Continuous', wacana: '', pertanyaan: 'Look! The birds ___ in the sky right now.', opsi: { A: 'fly', B: 'flew', C: 'are flying', D: 'is flying' }, kunci: 'C' }
-      ],
-      leaderboard: [
-        { kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', nama: 'Alya Putri', kelas: 'VII-A', nilaiUjian: 93, skorPertahanan: 2680, senjata: '🌋 Inferno Volt Storm' },
-        { kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', nama: 'Bagas Wijaya', kelas: 'VII-A', nilaiUjian: 87, skorPertahanan: 2940, senjata: '🔦 Hyper Beam Laser' },
-        { kodeMapel: 'BINDO', namaMapel: 'Bahasa Indonesia', nama: 'Citra Lestari', kelas: 'VII-B', nilaiUjian: 80, skorPertahanan: 2150, senjata: '🔦 Hyper Beam Laser' },
-        { kodeMapel: 'MTK', namaMapel: 'Matematika', nama: 'Dimas Arya', kelas: 'VII-A', nilaiUjian: 100, skorPertahanan: 2420, senjata: '🔦 Hyper Beam Laser' },
-        { kodeMapel: 'MTK', namaMapel: 'Matematika', nama: 'Nadia Safira', kelas: 'VII-B', nilaiUjian: 90, skorPertahanan: 2180, senjata: '⚡ Volt Petir Striker' },
-        { kodeMapel: 'IPA', namaMapel: 'Ilmu Pengetahuan Alam', nama: 'Fajar Nugroho', kelas: 'VII-A', nilaiUjian: 90, skorPertahanan: 2310, senjata: '⚡ Volt Petir Striker' },
-        { kodeMapel: 'IPA', namaMapel: 'Ilmu Pengetahuan Alam', nama: 'Siti Rahma', kelas: 'VII-C', nilaiUjian: 80, skorPertahanan: 1980, senjata: '⚡ Volt Petir Striker' },
-        { kodeMapel: 'BING', namaMapel: 'Bahasa Inggris', nama: 'Keisha Amanda', kelas: 'VII-B', nilaiUjian: 100, skorPertahanan: 2510, senjata: '🔦 Hyper Beam Laser' },
-        { kodeMapel: 'BING', namaMapel: 'Bahasa Inggris', nama: 'Rendi Pratama', kelas: 'VII-A', nilaiUjian: 80, skorPertahanan: 2040, senjata: '⚡ Volt Petir Striker' }
-      ]
-    };
-
-    // Mock Database 2: Contoh 3 Wave Variatif (2 + 3 + 5 soal)
-    const MOCK_DATABASE_3WAVE_VARIATIF = {
-      name: 'Mock 3 Wave Variatif (2+3+5)',
-      questions: [
-        { ...MOCK_DATABASE_4MAPEL.questions[0], wave: 1 },
-        { ...MOCK_DATABASE_4MAPEL.questions[1], wave: 1 },
-        { ...MOCK_DATABASE_4MAPEL.questions[2], wave: 2 },
-        { ...MOCK_DATABASE_4MAPEL.questions[3], wave: 2 },
-        { ...MOCK_DATABASE_4MAPEL.questions[4], wave: 2 },
-        { ...MOCK_DATABASE_4MAPEL.questions[5], wave: 3 },
-        { ...MOCK_DATABASE_4MAPEL.questions[6], wave: 3 },
-        { ...MOCK_DATABASE_4MAPEL.questions[7], wave: 3 },
-        { ...MOCK_DATABASE_4MAPEL.questions[8], wave: 3 },
-        { ...MOCK_DATABASE_4MAPEL.questions[9], wave: 3 }
-      ],
-      leaderboard: MOCK_DATABASE_4MAPEL.leaderboard.filter((l) => l.kodeMapel === 'BINDO')
     };
 
     // Template Kode Google Apps Script (Header-Aware, Multi-Mapel, LockService, Mode Leaderboard)
@@ -1120,75 +922,92 @@
     ].join('\n');
 
     // =========================================================================
-    // 2. SISTEM AUDIO PROSEDURAL (WEB AUDIO API - TANPA URL EKSTERNAL)
+    // 2. SISTEM AUDIO PROSEDURAL (WEB AUDIO API — TANPA FILE EKSTERNAL)
     // =========================================================================
     const AudioSys = {
       ctx: null,
       muted: false,
       init() {
-        if (!this.ctx) {
-          const AC = window.AudioContext || window.webkitAudioContext;
-          if (AC) this.ctx = new AC();
-        }
-        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+        try {
+          if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) this.ctx = new AudioCtx();
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+          }
+        } catch (err) { /* Abaikan jika browser membatasi audio */ }
       },
-      tone(freqStart, freqEnd, duration, type = 'square', vol = 0.06) {
+      tone(freq, endFreq, duration, type = 'square', gainVal = 0.08) {
         if (this.muted) return;
-        this.init();
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = type;
-        osc.frequency.setValueAtTime(freqStart, now);
-        osc.frequency.exponentialRampToValueAtTime(Math.max(30, freqEnd), now + duration);
-        gain.gain.setValueAtTime(vol, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + duration);
+        try {
+          if (!this.ctx) this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+          if (endFreq !== freq) {
+            osc.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), now + duration);
+          }
+          gain.gain.setValueAtTime(gainVal, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + duration);
+        } catch (err) { /* Aman */ }
       },
       shoot(element) {
-        if (element === 'laser' || element === 'omega') this.tone(1100, 320, 0.08, 'sawtooth', 0.045);
-        else if (element === 'lightning' || element === 'fire_lightning') this.tone(860, 180, 0.09, 'square', 0.045);
-        else if (element === 'fire') this.tone(360, 110, 0.1, 'sawtooth', 0.05);
-        else this.tone(520, 160, 0.06, 'triangle', 0.05);
+        if (element === 'laser' || element === 'omega') {
+          this.tone(1100, 320, 0.09, 'sawtooth', 0.06);
+        } else if (element === 'lightning' || element === 'fire_lightning') {
+          this.tone(860, 220, 0.08, 'square', 0.055);
+        } else if (element === 'fire') {
+          this.tone(320, 120, 0.1, 'sawtooth', 0.06);
+        } else {
+          this.tone(540, 190, 0.06, 'square', 0.05);
+        }
       },
-      hit() { this.tone(210, 90, 0.045, 'square', 0.03); },
+      hit() {
+        this.tone(240, 110, 0.05, 'triangle', 0.05);
+      },
+      jump() {
+        this.tone(260, 620, 0.14, 'sine', 0.08);
+      },
+      land() {
+        this.tone(140, 65, 0.08, 'triangle', 0.07);
+      },
+      damage() {
+        this.tone(180, 60, 0.22, 'sawtooth', 0.11);
+      },
       crateOpen() {
-        this.tone(440, 660, 0.12, 'triangle', 0.08);
-        setTimeout(() => this.tone(660, 880, 0.16, 'triangle', 0.08), 90);
+        this.tone(520, 880, 0.15, 'triangle', 0.09);
       },
       correct() {
-        this.tone(523, 659, 0.12, 'sine', 0.09);
-        setTimeout(() => this.tone(659, 784, 0.14, 'sine', 0.09), 100);
-        setTimeout(() => this.tone(784, 1046, 0.22, 'sine', 0.09), 200);
+        this.tone(523, 659, 0.12, 'triangle', 0.09);
+        setTimeout(() => this.tone(659, 1046, 0.2, 'triangle', 0.09), 110);
       },
       wrong() {
-        this.tone(280, 170, 0.18, 'sawtooth', 0.08);
-        setTimeout(() => this.tone(180, 110, 0.22, 'sawtooth', 0.08), 160);
+        this.tone(260, 140, 0.24, 'sawtooth', 0.09);
       },
-      damage() { this.tone(150, 55, 0.18, 'sawtooth', 0.1); },
-      pickup() {
-        this.tone(587, 880, 0.1, 'sine', 0.08);
-        setTimeout(() => this.tone(880, 1175, 0.14, 'sine', 0.08), 80);
-      },
-      jump() { this.tone(240, 620, 0.16, 'sine', 0.08); },
-      land() { this.tone(150, 75, 0.08, 'triangle', 0.05); },
       bossWarn() {
-        this.tone(160, 120, 0.35, 'sawtooth', 0.11);
-        setTimeout(() => this.tone(140, 95, 0.45, 'sawtooth', 0.11), 300);
+        this.tone(160, 110, 0.32, 'sawtooth', 0.12);
+        setTimeout(() => this.tone(140, 85, 0.35, 'sawtooth', 0.12), 260);
+      },
+      pickup() {
+        this.tone(660, 1180, 0.14, 'sine', 0.08);
       }
     };
 
     // =========================================================================
-    // 3. STATE APLIKASI (100% MEMORI SESI & GOOGLE SHEETS — TANPA LOCALSTORAGE)
+    // 3. STATE APLIKASI (100% GOOGLE SHEETS & MEMORI SESI — TANPA LOCALSTORAGE)
     // =========================================================================
     const appMemory = {
-      gasUrl: '',
-      activeSourceName: 'Mock Data 4 Mapel',
-      selectedSubject: 'BINDO',
+      gasUrl: DEFAULT_GAS_URL,
+      activeSourceName: 'Google Sheets Live',
+      selectedSubject: '',
       leaderboardFilter: 'nilai', // 'nilai' | 'defense'
       sessionLeaderboard: []
     };
@@ -2737,6 +2556,12 @@
         appMemory.selectedSubject = availableSubjects[0].code;
       }
 
+      const startBtn = document.getElementById('btn-start');
+      if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.textContent = '🚀 MULAI PERTEMPURAN UJIAN!';
+      }
+
       renderSubjectCards();
       renderAllLeaderboards();
     }
@@ -2777,15 +2602,33 @@
     }
 
     async function syncFromGoogleSheets(url) {
-      const cleanUrl = String(url || '').trim();
+      const cleanUrl = String(url || DEFAULT_GAS_URL || '').trim();
       if (!cleanUrl || !cleanUrl.startsWith('http')) {
-        showToast('Masukkan URL Web App Google Apps Script yang valid.', 'warn');
+        showToast('URL Web App Google Apps Script tidak valid.', 'warn');
         return;
       }
 
       const btn = document.getElementById('btn-sync-gas');
-      btn.disabled = true;
-      btn.textContent = '⏳ Menarik Data...';
+      const startBtn = document.getElementById('btn-start');
+      const grid = document.getElementById('subject-cards-grid');
+      const startLb = document.getElementById('start-leaderboard-list');
+      const badge = document.getElementById('db-source-badge');
+
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Menarik Data...';
+      }
+      if (startBtn && allDatabaseQuestions.length === 0) {
+        startBtn.disabled = true;
+        startBtn.textContent = '⏳ MEMUAT DATA GOOGLE SHEETS...';
+      }
+      if (badge) badge.textContent = '⏳ Menyinkronkan Google Sheets...';
+      if (grid && allDatabaseQuestions.length === 0) {
+        grid.innerHTML = `<div class="col-span-2 bg-slate-950/80 border border-slate-800 rounded-2xl p-4 text-center text-xs text-sky-300">⏳ Mengambil daftar mata pelajaran & soal dari Google Sheets...</div>`;
+      }
+      if (startLb && allDatabaseQuestions.length === 0) {
+        startLb.innerHTML = `<div class="text-center py-6 text-xs text-sky-300">⏳ Mengambil data leaderboard dari Google Sheets...</div>`;
+      }
 
       try {
         const sep = cleanUrl.includes('?') ? '&' : '?';
@@ -2800,22 +2643,45 @@
         loadDatabase(json.questions, json.leaderboard || [], 'Google Sheets Live');
         showToast(`✅ Berhasil menarik ${json.questions.length} soal dari Google Sheets!`, 'success');
       } catch (err) {
+        if (badge) badge.textContent = '⚠️ Gagal Terhubung Google Sheets';
+        if (startBtn && allDatabaseQuestions.length === 0) {
+          startBtn.disabled = true;
+          startBtn.textContent = '⚠️ DATA BELUM TERMUAT';
+        }
+        if (grid && allDatabaseQuestions.length === 0) {
+          grid.innerHTML = `
+            <div class="col-span-2 bg-rose-950/40 border border-rose-500/50 rounded-2xl p-4 text-center space-y-2">
+              <div class="text-xs text-rose-200 font-bold">⚠️ Gagal memuat soal dari Google Sheets (${escapeHtml(err.message)})</div>
+              <button type="button" id="btn-retry-fetch-sheets" class="btn-voxel bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold px-3.5 py-2 rounded-xl cursor-pointer">
+                🔄 Coba Muat Ulang Google Sheets
+              </button>
+            </div>
+          `;
+          const retryFetchBtn = document.getElementById('btn-retry-fetch-sheets');
+          if (retryFetchBtn) retryFetchBtn.addEventListener('click', () => syncFromGoogleSheets(cleanUrl));
+        }
+        if (startLb && allDatabaseQuestions.length === 0) {
+          startLb.innerHTML = `<div class="text-center py-6 text-xs text-rose-300">Gagal memuat leaderboard dari Google Sheets.</div>`;
+        }
         showToast(`Gagal sinkron Google Sheets: ${err.message}`, 'error');
       } finally {
-        btn.disabled = false;
-        btn.textContent = '🔄 Tarik Soal & Leaderboard';
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = '🔄 Tarik Soal & Leaderboard';
+        }
       }
     }
 
     async function refreshLeaderboardFromGas(silent = false) {
-      if (!appMemory.gasUrl) return;
+      const targetUrl = (appMemory.gasUrl || DEFAULT_GAS_URL || '').trim();
+      if (!targetUrl) return;
       const statusEl = document.getElementById('sync-result-status');
       const btns = [document.getElementById('btn-refresh-lb'), document.getElementById('btn-start-refresh-lb')];
       btns.forEach((b) => { if (b) { b.disabled = true; b.textContent = '⏳...'; } });
 
       try {
-        const sep = appMemory.gasUrl.includes('?') ? '&' : '?';
-        const res = await fetch(`${appMemory.gasUrl}${sep}mode=leaderboard&t=${Date.now()}`);
+        const sep = targetUrl.includes('?') ? '&' : '?';
+        const res = await fetch(`${targetUrl}${sep}mode=leaderboard&t=${Date.now()}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         if (json.status === 'ok' && Array.isArray(json.leaderboard)) {
@@ -2836,9 +2702,10 @@
 
     async function sendResultToGoogleSheets(payload) {
       const statusEl = document.getElementById('sync-result-status');
-      if (!appMemory.gasUrl) {
-        statusEl.textContent = '💾 Mode Mock Data aktif (Tempel URL Web App Google Apps Script di Panel Guru untuk rekap otomatis ke Google Sheets).';
-        statusEl.className = 'text-xs text-center bg-slate-950/80 border border-slate-700 rounded-xl py-2 px-3 text-slate-300';
+      const targetUrl = (appMemory.gasUrl || DEFAULT_GAS_URL || '').trim();
+      if (!targetUrl) {
+        statusEl.textContent = '⚠️ URL Google Apps Script belum diatur di Panel Guru.';
+        statusEl.className = 'text-xs text-center bg-rose-950/60 border border-rose-500/50 rounded-xl py-2 px-3 text-rose-200';
         return;
       }
 
@@ -2848,7 +2715,7 @@
       let sent = false;
       for (let attempt = 1; attempt <= 2; attempt++) {
         try {
-          await fetch(appMemory.gasUrl, {
+          await fetch(targetUrl, {
             method: 'POST',
             mode: 'no-cors',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -2864,7 +2731,7 @@
       if (sent) {
         statusEl.textContent = '✅ Nilai ujian berhasil dikirim! Menyinkronkan leaderboard terbaru dari Google Sheets...';
         statusEl.className = 'text-xs text-center bg-emerald-950/60 border border-emerald-500/50 rounded-xl py-2 px-3 text-emerald-200';
-        setTimeout(() => refreshLeaderboardFromGas(true), 1200);
+        setTimeout(() => refreshLeaderboardFromGas(true), 1400);
       } else {
         statusEl.textContent = '⚠️ Gagal terhubung ke Google Sheets. Pastikan koneksi internet stabil dan URL Web App benar.';
         statusEl.className = 'text-xs text-center bg-rose-950/60 border border-rose-500/50 rounded-xl py-2 px-3 text-rose-200';
@@ -3593,16 +3460,6 @@
       bindById('btn-sync-gas', 'click', () => {
         syncFromGoogleSheets(document.getElementById('input-gas-url').value);
       });
-      bindById('btn-load-mock-4mapel', 'click', () => {
-        appMemory.gasUrl = '';
-        loadDatabase(MOCK_DATABASE_4MAPEL.questions, MOCK_DATABASE_4MAPEL.leaderboard, MOCK_DATABASE_4MAPEL.name);
-        showToast('📚 Mock Data 4 Mapel aktif!', 'success');
-      });
-      bindById('btn-load-mock-variatif', 'click', () => {
-        appMemory.gasUrl = '';
-        loadDatabase(MOCK_DATABASE_3WAVE_VARIATIF.questions, MOCK_DATABASE_3WAVE_VARIATIF.leaderboard, MOCK_DATABASE_3WAVE_VARIATIF.name);
-        showToast('🌊 Mock 3 Wave Variatif (2+3+5 Soal) aktif!', 'success');
-      });
 
       // Mute, Fullscreen, JUMP, & Sync Leaderboard
       bindById('btn-mute', 'click', () => {
@@ -3666,21 +3523,17 @@
       try {
         initThreeScene();
         document.getElementById('gas-code-preview').textContent = GAS_CODE_TEMPLATE;
-        loadDatabase(MOCK_DATABASE_4MAPEL.questions, MOCK_DATABASE_4MAPEL.leaderboard, MOCK_DATABASE_4MAPEL.name);
         bindEvents();
         updateFullscreenButtonIcon();
         animateLoop();
 
-        // Otomatis sinkron dari parameter URL (?gas=...) ATAU dari DEFAULT_GAS_URL di index.html
+        // Langsung sinkron penuh dengan Google Sheets (parameter ?gas=... atau DEFAULT_GAS_URL)
         const params = new URLSearchParams(window.location.search);
         const gasFromQuery = (params.get('gas') || '').trim();
         const targetGasUrl = (gasFromQuery || DEFAULT_GAS_URL || '').trim();
 
-        if (targetGasUrl && targetGasUrl.startsWith('http')) {
-          document.getElementById('input-gas-url').value = targetGasUrl;
-          document.getElementById('db-source-badge').textContent = '⏳ Menyinkronkan Google Sheets...';
-          syncFromGoogleSheets(targetGasUrl);
-        }
+        document.getElementById('input-gas-url').value = targetGasUrl;
+        syncFromGoogleSheets(targetGasUrl);
       } catch (err) {
         console.error('Init error:', err);
         showToast(`Terjadi kesalahan inisialisasi: ${err.message}`, 'error');
