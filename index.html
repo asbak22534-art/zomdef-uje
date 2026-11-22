@@ -629,20 +629,25 @@
               🔄 Tarik Soal & Leaderboard
             </button>
           </div>
-          <div class="text-[11px] text-slate-400">
-            Tips: Anda juga bisa membagikan link dengan tambahan <code>?gas=URL_WEB_APP</code> agar siswa otomatis tersinkron saat membuka halaman.
+          <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+            <div class="text-[11px] text-slate-400">
+              Agar otomatis sinkron permanen di Vercel: isi <b>DEFAULT_GAS_URL</b> di dalam <code>index.html</code>, atau bagikan link otomatis di samping.
+            </div>
+            <button id="btn-copy-share-link" class="btn-voxel bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3 py-1.5 rounded-xl text-xs cursor-pointer whitespace-nowrap">
+              🔗 Salin Link Siswa Otomatis
+            </button>
           </div>
         </div>
 
-        <!-- Contoh Mock Data -->
+        <!-- Pilihan Mock Data untuk Uji Coba -->
         <div class="bg-slate-950/75 border border-slate-800 rounded-2xl p-3.5 space-y-2">
-          <div class="font-bold text-emerald-300">2. Uji Coba Cepat dengan Contoh Mock Data</div>
-          <div class="flex flex-wrap gap-2">
-            <button id="btn-load-mock-4mapel" class="btn-voxel bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs cursor-pointer">
+          <div class="font-bold text-emerald-300">2. Uji Coba Cepat dengan Contoh Database (Mock Data)</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button id="btn-load-mock-4mapel" class="btn-voxel bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-bold py-2 px-3 rounded-xl text-xs cursor-pointer">
               📚 Mock 4 Mapel (BINDO, MTK, IPA, BING)
             </button>
-            <button id="btn-load-mock-variatif" class="btn-voxel bg-purple-600 hover:bg-purple-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs cursor-pointer">
-              🌊 Mock 3 Wave Variatif (2 + 3 + 5 Soal)
+            <button id="btn-load-mock-variatif" class="btn-voxel bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-100 font-bold py-2 px-3 rounded-xl text-xs cursor-pointer">
+              🌊 Mock 3 Wave Variatif (2+3+5 Soal)
             </button>
           </div>
         </div>
@@ -668,6 +673,15 @@
   <!-- ================= SKRIP UTAMA APLIKASI ================= -->
   <script>
     'use strict';
+
+    // =========================================================================
+    // 0. KONFIGURASI URL GOOGLE APPS SCRIPT PERMANEN (ISI SEKALI DI SINI!)
+    // =========================================================================
+    // Tempel URL Web App Google Apps Script Anda di antara tanda kutip di bawah,
+    // lalu simpan/Commit ke GitHub (index.html). Semua siswa akan langsung sinkron
+    // otomatis tanpa perlu menempel link lagi!
+    // Contoh: const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycb.../exec';
+    const DEFAULT_GAS_URL = '';
 
     // =========================================================================
     // 1. KONFIGURASI SENJATA (7 TIER ELEMEN) & MOCK DATABASE MULTI-MAPEL
@@ -3524,65 +3538,94 @@
       }
     }
 
+    function copyShareLinkSafe() {
+      const urlVal = (document.getElementById('input-gas-url').value || appMemory.gasUrl || DEFAULT_GAS_URL || '').trim();
+      if (!urlVal || !urlVal.startsWith('http')) {
+        showToast('Tempel dulu URL Web App Google Apps Script di kolom atas.', 'warn');
+        return;
+      }
+      try {
+        const baseUrl = window.location.origin + window.location.pathname;
+        const shareUrl = `${baseUrl}?gas=${encodeURIComponent(urlVal)}`;
+        const temp = document.createElement('textarea');
+        temp.value = shareUrl;
+        temp.style.position = 'fixed';
+        temp.style.opacity = '0';
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+        showToast('🔗 Link siap bagikan untuk siswa berhasil disalin!', 'success');
+      } catch (err) {
+        showToast('Gagal menyalin link otomatis.', 'warn');
+      }
+    }
+
     function bindEvents() {
+      const bindById = (id, eventName, handler) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(eventName, handler);
+      };
+
       // Mulai & Navigasi Utama
-      document.getElementById('btn-start').addEventListener('click', () => startGame(false));
-      document.getElementById('btn-continue-battle').addEventListener('click', continueAfterQuestion);
-      document.getElementById('btn-retry-game').addEventListener('click', () => startGame(true));
-      document.getElementById('btn-back-menu').addEventListener('click', () => {
+      bindById('btn-start', 'click', () => startGame(false));
+      bindById('btn-continue-battle', 'click', continueAfterQuestion);
+      bindById('btn-retry-game', 'click', () => startGame(true));
+      bindById('btn-back-menu', 'click', () => {
         document.getElementById('end-screen').classList.add('hidden');
         document.getElementById('start-screen').classList.remove('hidden');
         renderAllLeaderboards();
       });
 
       // Highlight real-time bila siswa mengetik namanya di halaman awal
-      document.getElementById('input-student-name').addEventListener('input', renderAllLeaderboards);
-      document.getElementById('input-student-class').addEventListener('input', renderAllLeaderboards);
+      bindById('input-student-name', 'input', renderAllLeaderboards);
+      bindById('input-student-class', 'input', renderAllLeaderboards);
 
       // Panel Guru & Google Sheets
-      document.getElementById('btn-open-teacher').addEventListener('click', () => {
+      bindById('btn-open-teacher', 'click', () => {
         document.getElementById('teacher-modal').classList.remove('hidden');
       });
-      document.getElementById('btn-close-teacher').addEventListener('click', () => {
+      bindById('btn-close-teacher', 'click', () => {
         document.getElementById('teacher-modal').classList.add('hidden');
       });
-      document.getElementById('btn-copy-gas').addEventListener('click', copyGasCodeSafe);
-      document.getElementById('btn-sync-gas').addEventListener('click', () => {
+      bindById('btn-copy-gas', 'click', copyGasCodeSafe);
+      bindById('btn-copy-share-link', 'click', copyShareLinkSafe);
+      bindById('btn-sync-gas', 'click', () => {
         syncFromGoogleSheets(document.getElementById('input-gas-url').value);
       });
-      document.getElementById('btn-load-mock-4mapel').addEventListener('click', () => {
+      bindById('btn-load-mock-4mapel', 'click', () => {
         appMemory.gasUrl = '';
         loadDatabase(MOCK_DATABASE_4MAPEL.questions, MOCK_DATABASE_4MAPEL.leaderboard, MOCK_DATABASE_4MAPEL.name);
         showToast('📚 Mock Data 4 Mapel aktif!', 'success');
       });
-      document.getElementById('btn-load-mock-variatif').addEventListener('click', () => {
+      bindById('btn-load-mock-variatif', 'click', () => {
         appMemory.gasUrl = '';
         loadDatabase(MOCK_DATABASE_3WAVE_VARIATIF.questions, MOCK_DATABASE_3WAVE_VARIATIF.leaderboard, MOCK_DATABASE_3WAVE_VARIATIF.name);
         showToast('🌊 Mock 3 Wave Variatif (2+3+5 Soal) aktif!', 'success');
       });
 
       // Mute, Fullscreen, JUMP, & Sync Leaderboard
-      document.getElementById('btn-mute').addEventListener('click', () => {
+      bindById('btn-mute', 'click', () => {
         AudioSys.muted = !AudioSys.muted;
         document.getElementById('btn-mute').textContent = AudioSys.muted ? '🔇' : '🔊';
       });
-      document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreenSafe);
-      document.getElementById('btn-jump').addEventListener('pointerdown', (e) => {
+      bindById('btn-fullscreen', 'click', toggleFullscreenSafe);
+      bindById('btn-jump', 'pointerdown', (e) => {
         e.preventDefault();
         triggerPlayerJump();
       });
-      document.getElementById('btn-refresh-lb').addEventListener('click', () => refreshLeaderboardFromGas(false));
-      document.getElementById('btn-start-refresh-lb').addEventListener('click', () => refreshLeaderboardFromGas(false));
+      bindById('btn-refresh-lb', 'click', () => refreshLeaderboardFromGas(false));
+      bindById('btn-start-refresh-lb', 'click', () => refreshLeaderboardFromGas(false));
 
       // Filter 2 Poin Leaderboard (Sinkron antara Halaman Awal & Halaman Akhir)
       const setFilter = (mode) => {
         appMemory.leaderboardFilter = mode;
         renderAllLeaderboards();
       };
-      document.getElementById('btn-start-filter-nilai').addEventListener('click', () => setFilter('nilai'));
-      document.getElementById('btn-start-filter-defense').addEventListener('click', () => setFilter('defense'));
-      document.getElementById('btn-filter-nilai').addEventListener('click', () => setFilter('nilai'));
-      document.getElementById('btn-filter-defense').addEventListener('click', () => setFilter('defense'));
+      bindById('btn-start-filter-nilai', 'click', () => setFilter('nilai'));
+      bindById('btn-start-filter-defense', 'click', () => setFilter('defense'));
+      bindById('btn-filter-nilai', 'click', () => setFilter('nilai'));
+      bindById('btn-filter-defense', 'click', () => setFilter('defense'));
 
       // Kontrol Keyboard Laptop (Panah / WASD + Spasi JUMP)
       window.addEventListener('keydown', (e) => {
@@ -3628,12 +3671,15 @@
         updateFullscreenButtonIcon();
         animateLoop();
 
-        // Otomatis sinkron jika URL memiliki parameter ?gas=URL_WEB_APP
+        // Otomatis sinkron dari parameter URL (?gas=...) ATAU dari DEFAULT_GAS_URL di index.html
         const params = new URLSearchParams(window.location.search);
-        const gasFromQuery = params.get('gas');
-        if (gasFromQuery && gasFromQuery.startsWith('http')) {
-          document.getElementById('input-gas-url').value = gasFromQuery;
-          syncFromGoogleSheets(gasFromQuery);
+        const gasFromQuery = (params.get('gas') || '').trim();
+        const targetGasUrl = (gasFromQuery || DEFAULT_GAS_URL || '').trim();
+
+        if (targetGasUrl && targetGasUrl.startsWith('http')) {
+          document.getElementById('input-gas-url').value = targetGasUrl;
+          document.getElementById('db-source-badge').textContent = '⏳ Menyinkronkan Google Sheets...';
+          syncFromGoogleSheets(targetGasUrl);
         }
       } catch (err) {
         console.error('Init error:', err);
