@@ -100,6 +100,24 @@
       transition: width 0.08s linear;
     }
 
+    .hp-fill-runner {
+      height: 100%;
+      background: linear-gradient(90deg, #fb923c, #ef4444);
+      transition: width 0.08s linear;
+    }
+
+    .hp-fill-tank {
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8, #818cf8);
+      transition: width 0.08s linear;
+    }
+
+    .hp-fill-charger {
+      height: 100%;
+      background: linear-gradient(90deg, #facc15, #f97316);
+      transition: width 0.08s linear;
+    }
+
     .hp-card-crate {
       background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
       border: 2px solid #fef08a;
@@ -522,13 +540,16 @@
           <!-- Tombol opsi dirender oleh JS -->
         </div>
 
-        <!-- Umpan Balik Jawaban & Upgrade Senjata -->
+        <!-- Umpan Balik Jawaban & Upgrade Senjata (Konfirmasi Otomatis Tanpa Tombol Lanjut) -->
         <div id="q-feedback-box" class="hidden rounded-2xl p-3.5 border-2">
           <div id="q-feedback-title" class="font-game text-base sm:text-lg"></div>
           <div id="q-feedback-detail" class="text-xs sm:text-sm mt-1"></div>
-          <button id="btn-continue-battle" class="btn-voxel mt-3 w-full bg-gradient-to-b from-amber-400 to-orange-500 text-slate-950 font-game text-base font-bold py-2.5 rounded-xl cursor-pointer">
-            ⚔️ LANJUT BERTEMPUR!
-          </button>
+          <div class="mt-3 flex items-center gap-2.5">
+            <div class="flex-1 h-2 bg-slate-950/70 rounded-full overflow-hidden">
+              <div id="q-auto-progress" class="h-full bg-amber-400 rounded-full" style="width: 100%;"></div>
+            </div>
+            <span class="text-[11px] font-bold opacity-90 whitespace-nowrap">⚔️ Otomatis lanjut...</span>
+          </div>
         </div>
       </div>
     </div>
@@ -1073,6 +1094,8 @@
     let playerGroup, playerLegL, playerLegR, playerArmL, playerArmR, playerGunBarrel, playerMuzzleFlash, playerAuraRing;
     let turretHead, turretBarrel, turretMuzzleFlash;
     let activeCrateForModal = null;
+    let autoContinueTimer = null;
+    let answerLocked = false;
 
     // =========================================================================
     // 4. UTILITAS ACAK (SHUFFLE), TOAST, FULLSCREEN, & NORMALISASI DATA
@@ -1274,10 +1297,27 @@
 
     function getWaveDifficulty(waveIndexZeroBased) {
       const w = Math.max(0, waveIndexZeroBased);
+      const q = Math.max(0, game.answeredTotal);
+
+      // Eskalasi agresif tiap naik soal & naik Wave (gaya Last War / Zombie Waves / PvZ)
+      const hpMult = (1 + q * 0.28 + Math.pow(q, 1.38) * 0.09) * Math.pow(1.36, w);
+      const speedMult = Math.min(2.6, 1 + w * 0.16 + q * 0.048);
+      const spawnInterval = Math.max(0.52, 1.48 - w * 0.14 - q * 0.045);
+
+      // Jumlah zombie yang menyerbu serentak per gelombang spawn
+      const packMin = Math.min(4, 1 + Math.floor((q + w * 2) / 4));
+      const packMax = Math.min(6, 2 + Math.floor((q + w * 2) / 2.5));
+      const maxZombies = Math.min(44, 22 + q * 2 + w * 4);
+      const threatLevel = 1 + q + w * 2;
+
       return {
-        hpMult: Math.pow(1.48, w),
-        speedMult: 1 + w * 0.24,
-        spawnInterval: Math.max(0.75, 2.05 - w * 0.28)
+        threatLevel,
+        hpMult,
+        speedMult,
+        spawnInterval,
+        packMin,
+        packMax,
+        maxZombies
       };
     }
 
@@ -1459,6 +1499,41 @@
       buildEnvironment();
       buildPlayerCharacter();
       buildBarricadeAndTurret();
+      initZombieAssets();
+    }
+
+    // Cache Geometri & Material Zombie agar 40+ Zombie Gerombolan tetap 60 FPS
+    let ZombieAssets = null;
+    function initZombieAssets() {
+      ZombieAssets = {
+        geoLeg: new THREE.BoxGeometry(0.34, 0.85, 0.36),
+        geoTorso: new THREE.BoxGeometry(0.92, 1.0, 0.52),
+        geoHead: new THREE.BoxGeometry(0.78, 0.78, 0.78),
+        geoArm: new THREE.BoxGeometry(0.3, 0.3, 0.9),
+        geoHelmet: new THREE.BoxGeometry(0.92, 0.44, 0.92),
+        geoShield: new THREE.BoxGeometry(1.16, 1.12, 0.22),
+        geoPad: new THREE.BoxGeometry(0.45, 0.45, 0.68),
+        geoBall: new THREE.SphereGeometry(0.28, 8, 8),
+        geoHazardPack: new THREE.BoxGeometry(0.7, 0.75, 0.38),
+        matSkinNormal: new THREE.MeshLambertMaterial({ color: 0x65a30d }),
+        matSkinBoss: new THREE.MeshLambertMaterial({ color: 0x84cc16 }),
+        matSkinRunner: new THREE.MeshLambertMaterial({ color: 0x4d7c0f }),
+        matFaceZombie: new THREE.MeshLambertMaterial({ map: Textures.zombieFace }),
+        matFaceBoss: new THREE.MeshLambertMaterial({ map: Textures.bossFace }),
+        matShirtA: new THREE.MeshLambertMaterial({ color: 0x0f766e }),
+        matShirtB: new THREE.MeshLambertMaterial({ color: 0x334155 }),
+        matShirtRunner: new THREE.MeshLambertMaterial({ color: 0xea580c }),
+        matShirtTank: new THREE.MeshLambertMaterial({ color: 0x1e3a8a }),
+        matShirtCharger: new THREE.MeshLambertMaterial({ color: 0xeab308 }),
+        matShirtBoss: new THREE.MeshLambertMaterial({ color: 0xdc2626 }),
+        matPantsDark: new THREE.MeshLambertMaterial({ color: 0x1e293b }),
+        matPantsWhite: new THREE.MeshLambertMaterial({ color: 0xf8fafc }),
+        matSteel: new THREE.MeshLambertMaterial({ color: 0x94a3b8 }),
+        matDarkSteel: new THREE.MeshLambertMaterial({ color: 0x475569 }),
+        matBossHelmet: new THREE.MeshLambertMaterial({ color: 0xb91c1c }),
+        matBall: new THREE.MeshLambertMaterial({ color: 0x92400e }),
+        matHazardTank: new THREE.MeshLambertMaterial({ color: 0xf97316 })
+      };
     }
 
     function buildEnvironment() {
@@ -1725,182 +1800,159 @@
       return div;
     }
 
-    function projectToScreen(vec3) {
-      const v = vec3.clone();
-      v.project(camera);
-      return {
-        x: (v.x * 0.5 + 0.5) * window.innerWidth,
-        y: (-v.y * 0.5 + 0.5) * window.innerHeight,
-        inFront: v.z < 1
-      };
-    }
-
-    function spawnFloatingDamage(worldPos, text, color = '#fef08a') {
-      const p = projectToScreen(worldPos);
-      if (!p.inFront) return;
-      const el = document.createElement('div');
-      el.className = 'floating-dmg';
-      el.style.left = `${p.x}px`;
-      el.style.top = `${p.y}px`;
-      el.style.color = color;
-      el.textContent = text;
-      document.getElementById('world-labels-layer').appendChild(el);
-      setTimeout(() => el.remove(), 750);
-    }
-
-    function spawnParticles(x, y, z, colorHex, count = 8) {
-      const geo = new THREE.BoxGeometry(0.24, 0.24, 0.24);
-      const mat = new THREE.MeshBasicMaterial({ color: colorHex });
-      for (let i = 0; i < count; i++) {
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(x, y, z);
-        scene.add(mesh);
-        particles.push({
-          mesh,
-          vx: (Math.random() - 0.5) * 8,
-          vy: 2.5 + Math.random() * 5,
-          vz: (Math.random() - 0.5) * 8,
-          life: 0.42 + Math.random() * 0.25
-        });
-      }
-    }
-
-    function spawnLightningBeam(startVec, endVec) {
-      const mid = startVec.clone().lerp(endVec, 0.5);
-      mid.x += (Math.random() - 0.5) * 1.4;
-      mid.y += 0.6 + Math.random() * 0.8;
-      const points = [startVec.clone(), mid, endVec.clone()];
-      const geo = new THREE.BufferGeometry().setFromPoints(points);
-      const mat = new THREE.LineBasicMaterial({ color: 0xfef08a });
-      const line = new THREE.Line(geo, mat);
-      scene.add(line);
-      lightningBeams.push({ line, life: 0.16 });
-    }
-
-    function spawnCollectible(x, z, type) {
-      const group = new THREE.Group();
-      if (type === 'medkit') {
-        const box = new THREE.Mesh(
-          new THREE.BoxGeometry(0.95, 0.72, 0.72),
-          new THREE.MeshLambertMaterial({ color: 0xf8fafc })
-        );
-        box.position.y = 0.65;
-        const cross1 = new THREE.Mesh(
-          new THREE.BoxGeometry(0.55, 0.18, 0.78),
-          new THREE.MeshBasicMaterial({ color: 0x10b981 })
-        );
-        cross1.position.y = 0.65;
-        const cross2 = new THREE.Mesh(
-          new THREE.BoxGeometry(0.18, 0.55, 0.78),
-          new THREE.MeshBasicMaterial({ color: 0x10b981 })
-        );
-        cross2.position.y = 0.65;
-        group.add(box, cross1, cross2);
-      } else {
-        const star = new THREE.Mesh(
-          new THREE.OctahedronGeometry(0.55, 0),
-          new THREE.MeshLambertMaterial({ color: 0xfacc15, emissive: 0x854d0e })
-        );
-        star.position.y = 0.78;
-        group.add(star);
-      }
-      group.position.set(Math.max(-5.5, Math.min(5.5, x)), 0, Math.max(-13.5, Math.min(8.5, z)));
-      scene.add(group);
-      collectibles.push({ mesh: group, type, life: 11.0 });
-    }
-
-    // Aksi JUMP / Melompati Zombie (Fisika 3D Vertikal)
-    function triggerPlayerJump() {
-      if (!game.running || game.paused || game.finished) return;
-      if (!game.isGrounded || game.jumpCooldown > 0) return;
-      game.isGrounded = false;
-      game.playerVy = 16.8;
-      game.jumpCooldown = 0.15;
-      AudioSys.jump();
-      spawnParticles(playerGroup.position.x, 0.25, playerGroup.position.z, 0x34d399, 9);
-      spawnFloatingDamage(playerGroup.position.clone().add(new THREE.Vector3(0, 3.6, 0)), '🦘 JUMP!', '#34d399');
-    }
-
-    function spawnZombie(isBoss = false) {
+    function spawnZombie(isBoss = false, forcedType = null, customPos = null) {
+      if (!ZombieAssets) initZombieAssets();
       const diff = getWaveDifficulty(game.currentWaveIdx);
+      const q = game.answeredTotal;
+
+      // Pilih arketipe zombie berdasarkan progres soal (terinspirasi PvZ & Last War)
+      let variant = forcedType || 'walker';
+      if (isBoss) {
+        variant = 'boss';
+      } else if (!forcedType) {
+        const roll = Math.random();
+        if (q >= 7 && roll < 0.22) variant = 'charger';       // Hazmat Rusher (cepat & keras)
+        else if (q >= 4 && roll < 0.46) variant = 'tank';     // Armored Tank / Buckethead (HP tebal)
+        else if (q >= 2 && roll < 0.74) variant = 'runner';   // Sprinter (lari sangat cepat)
+        else variant = 'walker';
+      }
+
       const group = new THREE.Group();
-      const scale = isBoss ? 2.15 : (0.94 + Math.random() * 0.18);
+      const isTank = variant === 'tank';
+      const isRunner = variant === 'runner';
+      const isCharger = variant === 'charger';
 
-      const skinMat = new THREE.MeshLambertMaterial({ color: isBoss ? 0x84cc16 : 0x65a30d });
-      const faceMat = new THREE.MeshLambertMaterial({ map: isBoss ? Textures.bossFace : Textures.zombieFace });
-      const shirtMat = new THREE.MeshLambertMaterial({ color: isBoss ? 0xdc2626 : (Math.random() > 0.5 ? 0x0f766e : 0x334155) });
-      const pantsMat = new THREE.MeshLambertMaterial({ color: isBoss ? 0xf8fafc : 0x1e293b });
+      const scale = isBoss
+        ? 2.25
+        : (isTank ? 1.24 : (isRunner ? 0.88 : (isCharger ? 1.08 : (0.94 + Math.random() * 0.16))));
 
-      const legL = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.85, 0.36), pantsMat);
+      const skinMat = isBoss
+        ? ZombieAssets.matSkinBoss
+        : (isRunner ? ZombieAssets.matSkinRunner : ZombieAssets.matSkinNormal);
+      const faceMat = isBoss ? ZombieAssets.matFaceBoss : ZombieAssets.matFaceZombie;
+      const shirtMat = isBoss
+        ? ZombieAssets.matShirtBoss
+        : (isTank
+          ? ZombieAssets.matShirtTank
+          : (isRunner
+            ? ZombieAssets.matShirtRunner
+            : (isCharger ? ZombieAssets.matShirtCharger : (Math.random() > 0.5 ? ZombieAssets.matShirtA : ZombieAssets.matShirtB))));
+      const pantsMat = isBoss ? ZombieAssets.matPantsWhite : ZombieAssets.matPantsDark;
+
+      const legL = new THREE.Mesh(ZombieAssets.geoLeg, pantsMat);
       legL.position.set(-0.22, 0.42, 0);
       legL.castShadow = true;
 
-      const legR = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.85, 0.36), pantsMat);
+      const legR = new THREE.Mesh(ZombieAssets.geoLeg, pantsMat);
       legR.position.set(0.22, 0.42, 0);
       legR.castShadow = true;
 
-      const torso = new THREE.Mesh(new THREE.BoxGeometry(0.92, 1.0, 0.52), shirtMat);
+      const torso = new THREE.Mesh(ZombieAssets.geoTorso, shirtMat);
       torso.position.y = 1.32;
       torso.castShadow = true;
 
-      const head = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.78, 0.78), [
+      const head = new THREE.Mesh(ZombieAssets.geoHead, [
         skinMat, skinMat, skinMat, skinMat, faceMat, skinMat
       ]);
       head.position.y = 2.22;
       head.castShadow = true;
 
-      const armL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.9), skinMat);
+      const armL = new THREE.Mesh(ZombieAssets.geoArm, skinMat);
       armL.position.set(-0.62, 1.55, 0.42);
-      const armR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.9), skinMat);
+      const armR = new THREE.Mesh(ZombieAssets.geoArm, skinMat);
       armR.position.set(0.62, 1.55, 0.42);
 
       group.add(legL, legR, torso, head, armL, armR);
 
-      // Aksesoris Boss Football Zombie (Helm Merah, Bantalan Bahu, & Bola Football)
+      // Aksesoris Visual Tiap Arketipe
       if (isBoss) {
-        const padMat = new THREE.MeshLambertMaterial({ color: 0xf8fafc });
-        const padL = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.68), padMat);
+        const padL = new THREE.Mesh(ZombieAssets.geoPad, ZombieAssets.matPantsWhite);
         padL.position.set(-0.68, 1.75, 0);
-        const padR = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 0.68), padMat);
+        const padR = new THREE.Mesh(ZombieAssets.geoPad, ZombieAssets.matPantsWhite);
         padR.position.set(0.68, 1.75, 0);
 
-        const helmet = new THREE.Mesh(
-          new THREE.BoxGeometry(0.9, 0.42, 0.9),
-          new THREE.MeshLambertMaterial({ color: 0xb91c1c })
-        );
+        const helmet = new THREE.Mesh(ZombieAssets.geoHelmet, ZombieAssets.matBossHelmet);
         helmet.position.y = 2.66;
 
-        const ball = new THREE.Mesh(
-          new THREE.SphereGeometry(0.28, 8, 8),
-          new THREE.MeshLambertMaterial({ color: 0x92400e })
-        );
+        const ball = new THREE.Mesh(ZombieAssets.geoBall, ZombieAssets.matBall);
         ball.scale.set(0.8, 0.8, 1.35);
         ball.position.set(0.65, 1.35, 0.78);
 
         group.add(padL, padR, helmet, ball);
+      } else if (isTank) {
+        // Helm Baja & Perisai Anti-Huru-Hara (gaya PvZ Buckethead / Riot Tank)
+        const steelHelm = new THREE.Mesh(ZombieAssets.geoHelmet, ZombieAssets.matSteel);
+        steelHelm.position.y = 2.64;
+        const shield = new THREE.Mesh(ZombieAssets.geoShield, ZombieAssets.matDarkSteel);
+        shield.position.set(0, 1.35, 0.75);
+        group.add(steelHelm, shield);
+      } else if (isCharger) {
+        // Tabung Hazmat Oranye di punggung + bahu pelindung
+        const pack = new THREE.Mesh(ZombieAssets.geoHazardPack, ZombieAssets.matHazardTank);
+        pack.position.set(0, 1.45, -0.45);
+        group.add(pack);
       }
 
       group.scale.setScalar(scale);
-      const spawnX = isBoss ? 0 : (-5.2 + Math.random() * 10.4);
-      const spawnZ = isBoss ? -40 : (-42 - Math.random() * 6);
-      group.position.set(spawnX, 0, spawnZ);
+      const spawnX = customPos ? customPos.x : (isBoss ? 0 : (-5.4 + Math.random() * 10.8));
+      const spawnZ = customPos ? customPos.z : (isBoss ? -40 : (-41 - Math.random() * 7));
+      group.position.set(Math.max(-5.6, Math.min(5.6, spawnX)), 0, spawnZ);
       scene.add(group);
 
-      const baseHp = isBoss ? (290 + game.currentWaveIdx * 170) : (26 + Math.floor(Math.random() * 10));
-      const maxHp = Math.round(baseHp * diff.hpMult);
-      const speed = (isBoss ? 2.55 : (3.35 + Math.random() * 0.95)) * diff.speedMult;
-      const hitRadius = isBoss ? 1.75 : 0.85;
-      const dmgToBarricade = isBoss ? 30 : 10;
-      const labelOffsetY = isBoss ? 6.4 : 2.95;
+      // Statistik HP, Kecepatan, & Damage Barikade yang jauh lebih menantang
+      let baseHp = 44 + Math.floor(Math.random() * 14);
+      let baseSpeed = 3.55 + Math.random() * 0.85;
+      let hitRadius = 0.86;
+      let dmgToBarricade = 10;
+      let labelOffsetY = 2.95;
+      let tagPrefix = '';
+      let fillClass = 'hp-fill-zombie';
+
+      if (isBoss) {
+        baseHp = 520 + game.currentWaveIdx * 240 + q * 48;
+        baseSpeed = 2.75;
+        hitRadius = 1.85;
+        dmgToBarricade = 35;
+        labelOffsetY = 6.6;
+      } else if (isTank) {
+        baseHp = 112 + Math.floor(Math.random() * 24);
+        baseSpeed = 2.65 + Math.random() * 0.4;
+        hitRadius = 1.12;
+        dmgToBarricade = 18;
+        labelOffsetY = 3.55;
+        tagPrefix = '🛡️ ';
+        fillClass = 'hp-fill-tank';
+      } else if (isRunner) {
+        baseHp = 30 + Math.floor(Math.random() * 10);
+        baseSpeed = 5.35 + Math.random() * 0.9;
+        hitRadius = 0.78;
+        dmgToBarricade = 11;
+        labelOffsetY = 2.75;
+        tagPrefix = '⚡ ';
+        fillClass = 'hp-fill-runner';
+      } else if (isCharger) {
+        baseHp = 78 + Math.floor(Math.random() * 18);
+        baseSpeed = 4.55 + Math.random() * 0.65;
+        hitRadius = 0.96;
+        dmgToBarricade = 22;
+        labelOffsetY = 3.25;
+        tagPrefix = '☣️ ';
+        fillClass = 'hp-fill-charger';
+      }
+
+      const maxHp = Math.round(baseHp * (isBoss ? Math.max(1, diff.hpMult * 0.68) : diff.hpMult));
+      const speed = baseSpeed * diff.speedMult;
 
       const hpEl = isBoss
         ? createWorldLabelElement(`<div class="hp-card-boss"><span class="font-game text-[10px] text-rose-200">🏈 BOSS WAVE ${getCurrentWaveGroup().waveNumber}</span><span class="font-game text-sm text-white boss-hp-num">${maxHp}</span></div>`)
-        : createWorldLabelElement(`<div class="hp-tag-zombie z-hp-num">${maxHp}</div><div class="hp-bar-zombie"><div class="hp-fill-zombie" style="width:100%"></div></div>`);
+        : createWorldLabelElement(`<div class="hp-tag-zombie z-hp-num">${tagPrefix}${maxHp}</div><div class="hp-bar-zombie"><div class="${fillClass}" style="width:100%"></div></div>`);
 
       const zObj = {
         mesh: group,
         legL, legR,
         isBoss,
+        variant,
+        tagPrefix,
         hp: maxHp,
         maxHp,
         speed,
@@ -1910,6 +1962,7 @@
         hpEl,
         burnTimer: 0,
         burnTick: 0,
+        summonTimer: isBoss ? 4.2 : 0,
         jumpedOverBonusGiven: false,
         phase: Math.random() * Math.PI * 2
       };
@@ -1918,7 +1971,29 @@
       if (isBoss) {
         updateBossHUD(zObj);
         AudioSys.bossWarn();
-        showWaveBanner(`🏈 BOSS WAVE ${getCurrentWaveGroup().waveNumber} MUNCUL!`, `Kalahkan Boss (${maxHp} HP) untuk lanjut ke Wave berikutnya!`);
+        showWaveBanner(`🏈 BOSS WAVE ${getCurrentWaveGroup().waveNumber} MUNCUL!`, `HP ${maxHp} • Memanggil Pasukan Zombie! Hancurkan sebelum barikade runtuh!`);
+      }
+    }
+
+    // Spawn Gerombolan Zombie dalam formasi serbu (Last War / PvZ Horde Style)
+    function spawnZombiePack(forceCount = null) {
+      const diff = getWaveDifficulty(game.currentWaveIdx);
+      const slotsLeft = Math.max(0, diff.maxZombies - zombies.length);
+      if (slotsLeft <= 0) return;
+
+      const desired = forceCount !== null
+        ? forceCount
+        : (diff.packMin + Math.floor(Math.random() * (diff.packMax - diff.packMin + 1)));
+      const count = Math.min(slotsLeft, desired);
+
+      const centerLane = -3.8 + Math.random() * 7.6;
+      for (let i = 0; i < count; i++) {
+        // Sebar posisi X & Z agar membentuk gerombolan V / gelombang yang nyata
+        const spreadX = count === 1
+          ? (-5.2 + Math.random() * 10.4)
+          : (centerLane + (i - (count - 1) / 2) * 1.9 + (Math.random() - 0.5) * 0.9);
+        const spreadZ = -41 - Math.abs(i - (count - 1) / 2) * 1.6 - Math.random() * 3.2;
+        spawnZombie(false, null, { x: spreadX, z: spreadZ });
       }
     }
 
@@ -1960,7 +2035,8 @@
       scene.add(group);
 
       const w = getWeaponSpec();
-      const maxHp = Math.max(36, Math.round(w.damage * w.streams * 2.1 + game.currentWaveIdx * 28));
+      const diff = getWaveDifficulty(game.currentWaveIdx);
+      const maxHp = Math.max(48, Math.round(w.damage * w.streams * 2.55 + game.answeredTotal * 22 + game.currentWaveIdx * 36 + diff.hpMult * 12));
       const crateNum = game.answeredTotal + crates.length + 1;
 
       const hpEl = createWorldLabelElement(`
@@ -2057,12 +2133,15 @@
       if (element === 'fire' || element === 'fire_lightning' || element === 'omega') {
         z.burnTimer = 3.0;
         spawnParticles(z.mesh.position.x, 1.5, z.mesh.position.z, 0xf97316, 5);
-        for (const other of zombies) {
+        for (let k = zombies.length - 1; k >= 0; k--) {
+          const other = zombies[k];
           if (other !== z && other.hp > 0) {
             const d = Math.hypot(other.mesh.position.x - z.mesh.position.x, other.mesh.position.z - z.mesh.position.z);
-            if (d < 2.6) {
-              other.hp = Math.max(0, other.hp - Math.round(dmg * 0.35));
+            if (d < 2.8) {
+              other.hp = Math.max(0, other.hp - Math.round(dmg * 0.38));
               other.burnTimer = 2.0;
+              if (other.isBoss) updateBossHUD(other);
+              if (other.hp <= 0) handleZombieKilled(other, k);
             }
           }
         }
@@ -2071,10 +2150,11 @@
       // Efek Elemen: Petir Berantai 3D
       if (element === 'lightning' || element === 'fire_lightning' || element === 'omega') {
         let chained = 0;
-        for (const other of zombies) {
+        for (let k = zombies.length - 1; k >= 0; k--) {
+          const other = zombies[k];
           if (other !== z && other.hp > 0 && chained < 2) {
             const d = Math.hypot(other.mesh.position.x - z.mesh.position.x, other.mesh.position.z - z.mesh.position.z);
-            if (d < 5.6) {
+            if (d < 5.8) {
               const chainDmg = Math.round(dmg * 0.55);
               other.hp = Math.max(0, other.hp - chainDmg);
               spawnLightningBeam(
@@ -2082,6 +2162,8 @@
                 other.mesh.position.clone().add(new THREE.Vector3(0, 1.6, 0))
               );
               spawnFloatingDamage(other.mesh.position.clone().add(new THREE.Vector3(0, other.labelOffsetY, 0)), `⚡-${chainDmg}`, '#fef08a');
+              if (other.isBoss) updateBossHUD(other);
+              if (other.hp <= 0) handleZombieKilled(other, k);
               chained++;
             }
           }
@@ -2092,9 +2174,11 @@
     }
 
     function handleZombieKilled(z, idx) {
+      const realIdx = zombies.indexOf(z);
+      if (realIdx === -1) return;
       scene.remove(z.mesh);
       if (z.hpEl) z.hpEl.remove();
-      zombies.splice(idx, 1);
+      zombies.splice(realIdx, 1);
 
       spawnParticles(z.mesh.position.x, 1.5, z.mesh.position.z, z.isBoss ? 0xfacc15 : 0x65a30d, z.isBoss ? 22 : 10);
 
@@ -2105,18 +2189,19 @@
       if (z.isBoss) {
         game.bossKills++;
         game.bossDefeatedInWave = true;
-        game.defenseScore += 350 + comboBonus;
+        game.defenseScore += 450 + comboBonus;
         updateBossHUD(null);
         spawnCollectible(z.mesh.position.x, Math.min(6, z.mesh.position.z), 'medkit');
         advanceWaveOrFinish();
       } else {
         game.zombieKills++;
-        game.defenseScore += 35 + comboBonus;
-        // Peluang Drop Item Interaktif
+        const typeBonus = z.variant === 'tank' ? 70 : (z.variant === 'charger' ? 60 : (z.variant === 'runner' ? 45 : 35));
+        game.defenseScore += typeBonus + comboBonus;
+        // Peluang Drop Item Interaktif (lebih langka agar medkit benar-benar berharga)
         const roll = Math.random();
-        if (roll < 0.14 && game.barricadeHp < game.barricadeMaxHp) {
+        if (roll < 0.08 && game.barricadeHp < game.barricadeMaxHp) {
           spawnCollectible(z.mesh.position.x, z.mesh.position.z, 'medkit');
-        } else if (roll < 0.28) {
+        } else if (roll < 0.2) {
           spawnCollectible(z.mesh.position.x, z.mesh.position.z, 'coin');
         }
       }
@@ -2133,10 +2218,104 @@
       }
     }
 
+    function projectToScreen(worldPos) {
+      const vec = worldPos.clone().project(camera);
+      return {
+        x: (vec.x * 0.5 + 0.5) * window.innerWidth,
+        y: (-vec.y * 0.5 + 0.5) * window.innerHeight,
+        inFront: vec.z >= -1 && vec.z <= 1
+      };
+    }
+
+    function spawnFloatingDamage(worldPos, text, color = '#ffffff') {
+      const p = projectToScreen(worldPos);
+      if (!p.inFront) return;
+      const el = document.createElement('div');
+      el.className = 'floating-dmg';
+      el.style.left = `${p.x + (Math.random() - 0.5) * 20}px`;
+      el.style.top = `${p.y}px`;
+      el.style.color = color;
+      el.textContent = text;
+      document.getElementById('world-labels-layer').appendChild(el);
+      setTimeout(() => el.remove(), 750);
+    }
+
+    function spawnParticles(x, y, z, colorHex, count = 6) {
+      if (particles.length > 90) return;
+      const geo = new THREE.BoxGeometry(0.22, 0.22, 0.22);
+      const mat = new THREE.MeshBasicMaterial({ color: colorHex });
+      for (let i = 0; i < count; i++) {
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(x, y, z);
+        scene.add(mesh);
+        particles.push({
+          mesh,
+          vx: (Math.random() - 0.5) * 6.5,
+          vy: 2.5 + Math.random() * 4.5,
+          vz: (Math.random() - 0.5) * 6.5,
+          life: 0.35 + Math.random() * 0.25
+        });
+      }
+    }
+
+    function spawnLightningBeam(startPos, endPos) {
+      const mid = startPos.clone().lerp(endPos, 0.5);
+      mid.x += (Math.random() - 0.5) * 0.9;
+      mid.y += 0.4 + Math.random() * 0.5;
+      const geo = new THREE.BufferGeometry().setFromPoints([startPos, mid, endPos]);
+      const mat = new THREE.LineBasicMaterial({ color: 0xfef08a });
+      const line = new THREE.Line(geo, mat);
+      scene.add(line);
+      lightningBeams.push({ line, life: 0.16 });
+    }
+
+    function spawnCollectible(x, z, type) {
+      const group = new THREE.Group();
+      if (type === 'medkit') {
+        const box = new THREE.Mesh(
+          new THREE.BoxGeometry(0.95, 0.65, 0.75),
+          new THREE.MeshLambertMaterial({ color: 0xf8fafc })
+        );
+        const cross1 = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5, 0.16, 0.78),
+          new THREE.MeshBasicMaterial({ color: 0x10b981 })
+        );
+        const cross2 = new THREE.Mesh(
+          new THREE.BoxGeometry(0.16, 0.42, 0.78),
+          new THREE.MeshBasicMaterial({ color: 0x10b981 })
+        );
+        group.add(box, cross1, cross2);
+      } else {
+        const star = new THREE.Mesh(
+          new THREE.OctahedronGeometry(0.48, 0),
+          new THREE.MeshLambertMaterial({ color: 0xfacc15, emissive: 0xb45309 })
+        );
+        group.add(star);
+      }
+      group.position.set(Math.max(-5.2, Math.min(5.2, x)), 0.75, Math.max(-12, Math.min(8.2, z)));
+      scene.add(group);
+      collectibles.push({ mesh: group, type, life: 12.0 });
+    }
+
+    function triggerPlayerJump() {
+      if (!game.running || game.paused || game.finished) return;
+      if (!game.isGrounded || game.jumpCooldown > 0) return;
+      game.isGrounded = false;
+      game.playerVy = 15.8;
+      game.jumpCooldown = 0.22;
+      AudioSys.jump();
+      spawnParticles(playerGroup.position.x, 0.2, playerGroup.position.z, 0x34d399, 6);
+    }
+
     // =========================================================================
     // 8. MODAL SOAL UJIAN, UPGRADE SENJATA, & TRANSISI WAVE
     // =========================================================================
     function openQuestionModal(crateObj) {
+      if (autoContinueTimer) {
+        clearTimeout(autoContinueTimer);
+        autoContinueTimer = null;
+      }
+      answerLocked = false;
       game.paused = true;
       activeCrateForModal = crateObj;
       AudioSys.crateOpen();
@@ -2179,7 +2358,9 @@
     }
 
     function handleAnswerChoice(chosenLetter, clickedBtn) {
-      if (!activeCrateForModal) return;
+      if (!activeCrateForModal || answerLocked) return;
+      answerLocked = true;
+
       const q = activeCrateForModal.qData;
       const correctLetter = String(q.kunci || 'A').trim().toUpperCase();
       const isCorrect = (chosenLetter === correctLetter);
@@ -2189,7 +2370,7 @@
       game.answeredCratesInWave++;
       game.answerLog.push(`${q.no}:${chosenLetter}${isCorrect ? '✓' : '✗'}`);
 
-      // Nonaktifkan semua tombol opsi & tandai warna benar/salah
+      // Nonaktifkan semua tombol opsi & tandai warna benar/salah secara langsung
       const allBtns = document.querySelectorAll('#q-options-container button');
       allBtns.forEach((b) => {
         b.disabled = true;
@@ -2231,18 +2412,62 @@
 
       fbBox.classList.remove('hidden');
       updateMainHUD();
+
+      // Otomatis konfirmasi & lanjut bertempur tanpa perlu tekan tombol lanjut
+      const autoDelayMs = isCorrect ? 1100 : 1750;
+      const progBar = document.getElementById('q-auto-progress');
+      if (progBar) {
+        progBar.style.transition = 'none';
+        progBar.style.width = '100%';
+        progBar.className = isCorrect
+          ? 'h-full bg-emerald-400 rounded-full'
+          : 'h-full bg-rose-400 rounded-full';
+        void progBar.offsetWidth;
+        progBar.style.transition = `width ${autoDelayMs}ms linear`;
+        progBar.style.width = '0%';
+      }
+
+      if (autoContinueTimer) clearTimeout(autoContinueTimer);
+      autoContinueTimer = setTimeout(() => {
+        autoContinueTimer = null;
+        continueAfterQuestion();
+      }, autoDelayMs);
     }
 
     function continueAfterQuestion() {
+      if (autoContinueTimer) {
+        clearTimeout(autoContinueTimer);
+        autoContinueTimer = null;
+      }
+      answerLocked = false;
       document.getElementById('question-modal').classList.add('hidden');
       activeCrateForModal = null;
+      if (!game.running || game.finished) return;
       game.paused = false;
 
       // Cek apakah semua peti soal di Wave ini sudah terjawab -> Munculkan Boss!
       const waveGroup = getCurrentWaveGroup();
+      const diff = getWaveDifficulty(game.currentWaveIdx);
+
       if (game.answeredCratesInWave >= waveGroup.questions.length && !game.bossSpawnedInWave) {
         game.bossSpawnedInWave = true;
         spawnZombie(true);
+        // Pengawal Boss langsung ikut menyerbu
+        spawnZombiePack(Math.min(4, 2 + game.currentWaveIdx));
+      } else {
+        // Serangan Gerombolan Susulan (Horde Surge) setiap kali naik soal!
+        const surgeCount = Math.min(7, 2 + Math.floor(game.answeredTotal / 2));
+        spawnZombiePack(surgeCount);
+
+        if (game.answeredTotal === 2) {
+          showWaveBanner('⚡ ZOMBIE SPRINTER MUNCUL!', `Ancaman Naik Lv.${diff.threatLevel} • Gerombolan makin cepat & padat!`);
+        } else if (game.answeredTotal === 4) {
+          showWaveBanner('🛡️ ZOMBIE ARMORED TANK MUNCUL!', `Ancaman Naik Lv.${diff.threatLevel} • HP ${diff.hpMult.toFixed(1)}x • Gunakan senjata elemen!`);
+        } else if (game.answeredTotal === 7) {
+          showWaveBanner('☣️ HAZMAT RUSHER MENYERBU!', `Ancaman Naik Lv.${diff.threatLevel} • HP ${diff.hpMult.toFixed(1)}x • Gerombolan x${diff.packMax}!`);
+        } else {
+          showToast(`🚨 Soal #${game.answeredTotal} selesai! Gerombolan (${surgeCount} zombie) menyerbu • HP ${diff.hpMult.toFixed(1)}x!`, 'warn');
+        }
       }
       updateMainHUD();
     }
@@ -2304,7 +2529,7 @@
 
       document.getElementById('hud-subject-badge').textContent = game.subjectCode;
       document.getElementById('hud-wave-text').textContent = `WAVE ${waveGroup.waveNumber} / ${game.waves.length}`;
-      document.getElementById('hud-difficulty').textContent = `HP ${diff.hpMult.toFixed(1)}x • SPD ${diff.speedMult.toFixed(1)}x`;
+      document.getElementById('hud-difficulty').textContent = `🔥 Lv.${diff.threatLevel} • HP ${diff.hpMult.toFixed(1)}x • x${diff.packMax}`;
 
       const hpPct = Math.max(0, (game.barricadeHp / game.barricadeMaxHp) * 100);
       document.getElementById('hud-hp-text').textContent = `${game.barricadeHp} / ${game.barricadeMaxHp}`;
@@ -2791,6 +3016,12 @@
 
       AudioSys.init();
       clearWorldEntities();
+      if (autoContinueTimer) {
+        clearTimeout(autoContinueTimer);
+        autoContinueTimer = null;
+      }
+      answerLocked = false;
+      activeCrateForModal = null;
 
       game.running = true;
       game.paused = false;
@@ -2859,6 +3090,12 @@
 
     function finishExam(isVictory) {
       if (game.finished) return;
+      if (autoContinueTimer) {
+        clearTimeout(autoContinueTimer);
+        autoContinueTimer = null;
+      }
+      answerLocked = false;
+      activeCrateForModal = null;
       game.running = false;
       game.paused = false;
       game.finished = true;
@@ -3055,7 +3292,7 @@
       game.turretFireTimer -= dt;
       if (game.turretFireTimer <= 0) {
         fireTurretWeapon();
-        game.turretFireTimer = 0.72;
+        game.turretFireTimer = Math.max(0.32, 0.72 - (w.level - 1) * 0.06);
       }
 
       // Combo Timer
@@ -3067,12 +3304,12 @@
         }
       }
 
-      // 4. SPAWN ZOMBIE & PETI SOAL
+      // 4. SPAWN GEROMBOLAN ZOMBIE & PETI SOAL
       const diff = getWaveDifficulty(game.currentWaveIdx);
       const waveGroup = getCurrentWaveGroup();
       game.zombieSpawnTimer -= dt;
-      if (game.zombieSpawnTimer <= 0 && zombies.length < 18) {
-        spawnZombie(false);
+      if (game.zombieSpawnTimer <= 0 && zombies.length < diff.maxZombies) {
+        spawnZombiePack();
         game.zombieSpawnTimer = diff.spawnInterval;
       }
 
@@ -3121,14 +3358,14 @@
           }
         }
 
-        // Tumbukan dengan Zombie
+        // Tumbukan dengan Zombie (margin dz diperlebar agar laser cepat tidak tembus/skip)
         if (!removeBullet) {
           for (let zIdx = zombies.length - 1; zIdx >= 0; zIdx--) {
             const z = zombies[zIdx];
-            if (b.hitSet.has(z)) continue;
+            if (!z || z.hp <= 0 || b.hitSet.has(z)) continue;
             const dx = Math.abs(b.mesh.position.x - z.mesh.position.x);
             const dz = Math.abs(b.mesh.position.z - z.mesh.position.z);
-            if (dx < z.hitRadius + 0.35 && dz < z.hitRadius + 0.55) {
+            if (dx < z.hitRadius + 0.42 && dz < z.hitRadius + 0.92) {
               b.hitSet.add(z);
               applyDamageToZombie(z, b.damage, b.element);
               b.pierce--;
@@ -3145,11 +3382,33 @@
         }
       }
 
-      // 6. UPDATE ZOMBIE (GERAK, EFEK BAKAR, LOMPATI ZOMBIE, & BARIKADE)
+      // 6. UPDATE ZOMBIE (GERAK, EFEK BAKAR, SUMMON BOSS, LOMPATI ZOMBIE, & BARIKADE)
       for (let i = zombies.length - 1; i >= 0; i--) {
         const z = zombies[i];
-        z.mesh.position.z += z.speed * dt;
-        const walk = Math.sin(timeSec * 8 + z.phase) * 0.55;
+        if (!z) continue;
+
+        // Hazmat Charger berlari lebih kencang saat mendekati barikade (seperti PvZ / Left 4 Dead Charger)
+        const chargeBoost = (z.variant === 'charger' && z.mesh.position.z > -12) ? 1.32 : 1.0;
+        z.mesh.position.z += z.speed * chargeBoost * dt;
+
+        // Boss Football secara berkala memanggil pasukan zombie pendamping!
+        if (z.isBoss) {
+          z.summonTimer -= dt;
+          if (z.summonTimer <= 0) {
+            z.summonTimer = Math.max(2.6, 4.4 - game.currentWaveIdx * 0.35);
+            const diffBoss = getWaveDifficulty(game.currentWaveIdx);
+            if (zombies.length < diffBoss.maxZombies) {
+              const minionX1 = Math.max(-5.2, z.mesh.position.x - 2.3);
+              const minionX2 = Math.min(5.2, z.mesh.position.x + 2.3);
+              spawnZombie(false, 'runner', { x: minionX1, z: z.mesh.position.z - 1.5 });
+              spawnZombie(false, null, { x: minionX2, z: z.mesh.position.z - 1.5 });
+              spawnFloatingDamage(z.mesh.position.clone().add(new THREE.Vector3(0, 6.8, 0)), '📣 PANGGIL PASUKAN!', '#fca5a5');
+            }
+          }
+        }
+
+        const walkFreq = z.variant === 'runner' ? 13 : (z.isBoss ? 6 : 8.5);
+        const walk = Math.sin(timeSec * walkFreq + z.phase) * 0.55;
         z.legL.rotation.x = walk;
         z.legR.rotation.x = -walk;
 
@@ -3183,9 +3442,10 @@
               updateMainHUD();
             }
           } else if (game.playerInvuln <= 0) {
-            game.playerInvuln = 0.9;
-            spawnFloatingDamage(playerGroup.position.clone().add(new THREE.Vector3(0, 3.6, 0)), '-6 HP!', '#f43f5e');
-            triggerBarricadeDamage(6);
+            game.playerInvuln = 0.85;
+            const touchDmg = z.isBoss ? 14 : (z.variant === 'tank' || z.variant === 'charger' ? 10 : 7);
+            spawnFloatingDamage(playerGroup.position.clone().add(new THREE.Vector3(0, 3.6, 0)), `-${touchDmg} HP!`, '#f43f5e');
+            triggerBarricadeDamage(touchDmg);
             z.mesh.position.z -= 2.2;
             if (game.finished) return;
           }
@@ -3302,8 +3562,8 @@
           if (num) num.textContent = `${obj.hp}`;
         } else {
           const num = obj.hpEl.querySelector('.z-hp-num');
-          const bar = obj.hpEl.querySelector('.hp-fill-zombie');
-          if (num) num.textContent = `${obj.hp}`;
+          const bar = obj.hpEl.querySelector('.hp-bar-zombie > div');
+          if (num) num.textContent = `${obj.tagPrefix || ''}${obj.hp}`;
           if (bar) bar.style.width = `${pct}%`;
         }
       };
@@ -3436,7 +3696,6 @@
 
       // Mulai & Navigasi Utama
       bindById('btn-start', 'click', () => startGame(false));
-      bindById('btn-continue-battle', 'click', continueAfterQuestion);
       bindById('btn-retry-game', 'click', () => startGame(true));
       bindById('btn-back-menu', 'click', () => {
         document.getElementById('end-screen').classList.add('hidden');
