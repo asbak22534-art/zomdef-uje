@@ -1614,11 +1614,16 @@
     // =========================================================================
     // 6. KALKULASI SENJATA, TURRET BENTENG, & KURVA KESULITAN INTENS
     // =========================================================================
-    function getWeaponSpec() {
+    function getSelectedWeaponTier() {
       let chosen = WEAPON_TIERS[0];
       for (const tier of WEAPON_TIERS) {
         if (game.correctCount >= tier.minCorrect) chosen = tier;
       }
+      return chosen;
+    }
+
+    function getWeaponSpec() {
+      const chosen = getSelectedWeaponTier();
       const isOverdrive = game.overdriveTimer > 0;
       const totalDmg = Math.round((chosen.damage + game.pistolDmgBonus) * (isOverdrive ? 1.25 : 1));
       const totalRate = Number(((chosen.fireRate + game.pistolRateBonus) * (isOverdrive ? 1.85 : 1)).toFixed(2));
@@ -1631,6 +1636,40 @@
         critChance: effectiveCrit,
         isOverdrive
       };
+    }
+
+    // DPS permanen untuk balancing HP. Overdrive sengaja tidak dihitung karena
+    // hanya buff sementara. Semua jalur peluru dihitung karena beberapa peluru
+    // dari satu volley dapat mengenai target besar/berada pada jalur berdekatan.
+    function getPermanentCombatPower() {
+      const weapon = getSelectedWeaponTier();
+      const critFactor = 1 + Math.min(0.65, Math.max(0, game.critChance)) * 0.65;
+      const elementFactor = (weapon.element === 'fire' || weapon.element === 'fire_lightning' || weapon.element === 'omega')
+        ? 1.08
+        : 1.0;
+      const playerDps = Math.max(1,
+        (weapon.damage + game.pistolDmgBonus) *
+        (weapon.fireRate + game.pistolRateBonus) *
+        weapon.streams * critFactor * elementFactor
+      );
+
+      let turretDps = 0;
+      if (game.turretCount > 0) {
+        const turretIndex = Math.max(0, Math.min(TURRET_TYPES.length - 1, game.turretTypeIdx));
+        const turret = TURRET_TYPES[turretIndex];
+        const turretDamage = turret.baseDmg + game.turretDmgBonus + (weapon.level - 1) * 5;
+        // Kontribusi turret diberi bobot 35% agar tiga turret tidak membuat
+        // kompensasi HP musuh terlalu besar dibandingkan DPS pistol.
+        turretDps = Math.max(0, turretDamage * turret.fireRate * game.turretCount * 0.35 * 1.06);
+      }
+
+      const baselineDps = WEAPON_TIERS[0].damage * WEAPON_TIERS[0].fireRate * (1 + 0.05 * 0.65);
+      const effectiveDps = playerDps + turretDps;
+      const dpsRatio = Math.max(1, effectiveDps / baselineDps);
+      // Eksponen 0.9 mengikuti hampir seluruh pertumbuhan DPS, tetapi tetap
+      // menyisakan sedikit keunggulan upgrade agar progres terasa bermanfaat.
+      const weaponPowerMult = Math.pow(dpsRatio, 0.9);
+      return { playerDps, turretDps, effectiveDps, dpsRatio, weaponPowerMult };
     }
 
     function getTurretSpec() {
@@ -1649,27 +1688,41 @@
     }
 
     function getWaveDifficulty(waveIndexZeroBased) {
-      // Kurva ancaman bertahap: awal permainan sengaja ringan, lalu naik
-      // mengikuti jumlah soal yang telah dijawab dan wave yang sedang berjalan.
+      // Difficulty challenging: setiap jawaban (benar/salah) menaikkan
+      // question scaling; jawaban benar juga menaikkan weapon power.
       const w = Math.max(0, waveIndexZeroBased);
       const q = Math.max(0, game.answeredTotal);
 
-      // HP dan kecepatan tidak lagi melonjak eksponensial setiap soal.
-      const hpMult = 1 + Math.min(1.15, q * 0.035 + w * 0.04);
-      const speedMult = Math.min(1.6, 1 + q * 0.008 + w * 0.025);
+      // Kenaikan minimal ~1 HP per jawaban untuk varian dengan base HP 20.
+      // Tidak ada hard cap: pertumbuhan berlanjut sepanjang sesi.
+      const questionProgressMult = 1 + q * 0.05 + q * q * 0.0006;
+      const waveProgressMult = 1 + w * 0.06;
+      const combatPower = getPermanentCombatPower();
+      const hpMult = questionProgressMult * waveProgressMult * combatPower.weaponPowerMult;
 
-      // Spawn dimulai lambat (5,8 detik), lalu makin rapat secara terukur.
-      const spawnInterval = Math.max(2.0, 5.8 - q * 0.13 - w * 0.22);
+      const speedMult = Math.min(1.8, 1 + q * 0.012 + w * 0.035);
 
-      // Awal: satu zombie per kelompok. Setelah progres cukup, kelompok
-      // bertambah menjadi 1-2 lalu 2-3 zombie.
-      const packMin = q >= 15 ? 2 : 1;
-      const packMax = q >= 18 ? 3 : (q >= 5 ? 2 : 1);
-
-      // Batas zombie hidup meningkat perlahan dari 3 hingga maksimum 14.
-      const maxZombies = Math.min(14, 3 + Math.floor(q * 0.4) + Math.floor(w / 2));
+      // Spawn lebih aktif daripada baseline santai, tetapi tetap dibatasi
+      // agar opening dan transisi antarsoal masih punya ruang bernapas.
+      const spawnInterval = Math.max(2.0, 4.6 - q * 0.12 - w * 0.2);
+      const packMin = q >= 11 ? 2 : 1;
+      const packMax = q >= 17 ? 3 : (q >= 3 ? 2 : 1);
+      const maxZombies = Math.min(16, 4 + Math.floor(q * 0.38) + Math.floor(w * 0.75));
       const threatLevel = 1 + Math.floor(q / 3) + w;
-      return { threatLevel, hpMult, speedMult, spawnInterval, packMin, packMax, maxZombies };
+
+      return {
+        threatLevel,
+        hpMult,
+        questionProgressMult,
+        waveProgressMult,
+        weaponPowerMult: combatPower.weaponPowerMult,
+        effectiveDps: combatPower.effectiveDps,
+        speedMult,
+        spawnInterval,
+        packMin,
+        packMax,
+        maxZombies
+      };
     }
 
     function getCurrentWaveGroup() {
@@ -2170,7 +2223,7 @@
       let shirtColor = 0x334155;
       let faceTex = ZombieAssets.walkerFace;
       let scale = 1.0;
-      let baseHp = 26;
+      let baseHp = 32;
       let baseSpeed = 3.2;
       let hitRadius = 0.85;
       let dmgToBarricade = 8;
@@ -2216,7 +2269,7 @@
         shirtColor = 0xdc2626;
         faceTex = ZombieAssets.bossFace;
         scale = 2.35;
-        baseHp = 285;
+        baseHp = 330;
         baseSpeed = 2.05;
         hitRadius = 2.1;
         dmgToBarricade = 35;
@@ -2225,7 +2278,7 @@
         barColor = 'linear-gradient(90deg, #dc2626, #facc15)';
       }
 
-      const maxHp = Math.round(baseHp * diff.hpMult);
+      const maxHp = Math.max(baseHp, Math.floor(baseHp * diff.hpMult + 1e-9));
       const speed = baseSpeed * diff.speedMult;
 
       const skinMat = new THREE.MeshLambertMaterial({ color: skinColor });
@@ -2300,6 +2353,7 @@
         isBoss,
         variant,
         tagPrefix,
+        baseHp,
         hp: maxHp,
         maxHp,
         speed,
@@ -2323,6 +2377,35 @@
         updateBossHUD(zObj);
         showWaveBanner(`🏈 BOSS WAVE ${getCurrentWaveGroup().waveNumber} MUNCUL!`, 'Kalahkan Boss Titan & pasukan panggilannya!');
       }
+    }
+
+    // Hybrid Dynamic + Spawn Snapshot:
+    // - Zombie baru memakai scaling saat spawn.
+    // - Zombie yang masih hidup mendapat kenaikan max HP setiap soal dijawab.
+    // - Damage yang sudah diterima dipertahankan (tidak disembuhkan/reset).
+    function applyDynamicHealthScaling() {
+      if (!zombies.length) return;
+      const diff = getWaveDifficulty(game.currentWaveIdx);
+
+      zombies.forEach((z) => {
+        if (!z || z.hp <= 0 || !Number.isFinite(z.baseHp)) return;
+        const nextMaxHp = Math.max(z.baseHp, Math.floor(z.baseHp * diff.hpMult + 1e-9));
+        if (nextMaxHp <= z.maxHp) return;
+
+        const damageTaken = Math.max(0, z.maxHp - z.hp);
+        z.maxHp = nextMaxHp;
+        z.hp = Math.max(1, nextMaxHp - damageTaken);
+
+        if (z.hpEl) {
+          const numEl = z.hpEl.querySelector('.z-hp-num');
+          const fillEl = z.hpEl.querySelector('.z-hp-bar-fill');
+          if (numEl) numEl.textContent = `${z.tagPrefix || ''}${z.hp}`;
+          if (fillEl) fillEl.style.width = `${Math.max(0, (z.hp / z.maxHp) * 100)}%`;
+        }
+      });
+
+      const activeBoss = zombies.find((z) => z.isBoss && z.hp > 0);
+      if (activeBoss) updateBossHUD(activeBoss);
     }
 
     function spawnQuestionCrate() {
@@ -2968,6 +3051,9 @@
         fbDetail.textContent = `Jawaban benar: (${q.kunci}) ${q.opsi[q.kunci] || '-'}`;
       }
 
+      // Jawaban salah tetap menaikkan ketahanan zombie; jawaban benar juga
+      // mempertimbangkan tier/bonus pistol dan turret yang baru diperoleh.
+      applyDynamicHealthScaling();
       fbBox.classList.remove('hidden');
       updateMainHUD();
 
@@ -3025,6 +3111,7 @@
         game.bossSpawnedInWave = false;
         game.bossDefeatedInWave = false;
         game.crateSpawnTimer = 2.0;
+        applyDynamicHealthScaling();
         const nextDiff = getWaveDifficulty(game.currentWaveIdx);
         game.zombieSpawnTimer = Math.max(3.4, nextDiff.spawnInterval * 0.7);
         game.barricadeHp = Math.min(game.barricadeMaxHp, game.barricadeHp + 15);
@@ -3062,7 +3149,7 @@
 
       document.getElementById('hud-subject-badge').textContent = game.subjectCode;
       document.getElementById('hud-wave-text').textContent = `WAVE ${waveGroup.waveNumber} / ${game.waves.length}`;
-      document.getElementById('hud-difficulty').textContent = `🔥 Lv.${diff.threatLevel} • HP ${diff.hpMult.toFixed(1)}x • Horde ${diff.packMin}-${diff.packMax}`;
+      document.getElementById('hud-difficulty').textContent = `🔥 Lv.${diff.threatLevel} • HP x${diff.hpMult.toFixed(1)} • Spawn ${diff.spawnInterval.toFixed(1)}s • Horde ${diff.packMin}-${diff.packMax}`;
 
       const hpPct = Math.max(0, (game.barricadeHp / game.barricadeMaxHp) * 100);
       document.getElementById('hud-hp-text').textContent = `${game.barricadeHp} / ${game.barricadeMaxHp}`;
@@ -3221,7 +3308,7 @@
       game.fireTimer = 0.25;
       // Delay pembuka memberi waktu pemain mengenali arena dan mulai
       // menembak sebelum zombie pertama datang.
-      game.zombieSpawnTimer = 6.5;
+      game.zombieSpawnTimer = 4.5;
       game.crateSpawnTimer = 1.8;
       game.playerX = 0;
       game.playerZ = 7.4;
@@ -3545,7 +3632,7 @@
           if (z.summonTimer <= 0) {
             // Summon Boss dibuat lebih jarang dan tetap tunduk pada batas
             // zombie aktif agar tidak menjadi sumber horde tak terkendali.
-            z.summonTimer = Math.max(5.5, 8.5 - game.currentWaveIdx * 0.25);
+            z.summonTimer = Math.max(4.8, 7.2 - game.currentWaveIdx * 0.2);
             const summonCount = game.answeredTotal >= 12 ? 2 : 1;
             let summoned = 0;
             while (summoned < summonCount && zombies.length < diff.maxZombies) {
@@ -3668,9 +3755,11 @@
             spawnFloatingDamage(popPos, '+150 ⭐ SKOR', '#facc15');
           } else if (col.type === 'dmg_up') {
             applyPistolBonusReward(5, false);
+            applyDynamicHealthScaling();
             spawnFloatingDamage(popPos, '⚔️ +5 DMG PISTOL!', '#f87171');
           } else if (col.type === 'turret_up') {
             applyTurretUpgradeReward(false);
+            applyDynamicHealthScaling();
             spawnFloatingDamage(popPos, '🗼 BENTENG UPGRADE!', '#38bdf8');
           } else if (col.type.startsWith('skill_')) {
             const sKey = col.type.replace('skill_', '');
